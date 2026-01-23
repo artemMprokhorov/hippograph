@@ -1,4 +1,8 @@
-# Neural Memory MCP v2
+<p align="center">
+  <img src="logo.svg" width="200" alt="Neural Memory Graph Logo">
+</p>
+
+# Neural Memory Graph
 
 **Advanced Personal Knowledge Management with Semantic Graph Memory**
 
