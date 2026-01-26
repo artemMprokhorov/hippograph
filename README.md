@@ -27,7 +27,9 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - SQLite graph database with nodes, edges, and entities
 - Automatic relationship detection between notes
 - MCP protocol integration for AI assistants
-- Temporal decay for recency-weighted search
+- **Temporal decay** for recency-weighted search
+- **Importance scoring** (critical/normal/low) with activation boost
+- **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
 - Docker-ready deployment
 
 ---
@@ -101,9 +103,11 @@ For Claude.ai:
 | Tool | Description |
 |------|-------------|
 | `search_memory` | Semantic search with spreading activation |
-| `add_note` | Save note with auto-embedding and entity extraction |
+| `add_note` | Save note with auto-embedding, entity extraction, and duplicate detection |
 | `update_note` | Modify existing note, recompute connections |
 | `delete_note` | Remove note and its graph relationships |
+| `set_importance` | Set note importance (critical/normal/low) for search ranking |
+| `find_similar` | Check for similar notes before adding (deduplication) |
 | `neural_stats` | View memory statistics and graph metrics |
 | `get_graph` | Get connections for a specific note |
 

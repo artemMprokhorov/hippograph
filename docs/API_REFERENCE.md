@@ -133,6 +133,87 @@ Get graph connections for a specific note.
 
 ---
 
+### set_importance
+
+Set importance level for a note to boost its search ranking.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| note_id | integer | yes | Note ID |
+| importance | string | yes | Importance level: 'critical', 'normal', or 'low' |
+
+**Importance Levels:**
+- **critical** — 2x activation boost (high-priority information)
+- **normal** — 1x activation (default)
+- **low** — 0.5x activation (background information)
+
+**Example:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "set_importance",
+    "arguments": {
+      "note_id": 42,
+      "importance": "critical"
+    }
+  }
+}
+```
+
+**Response:**
+```
+✅ Note #42 importance set to 'critical' (2.0x activation)
+```
+
+---
+
+### find_similar
+
+Find notes similar to given content before adding duplicates.
+
+**Parameters:**
+| Name | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| content | string | yes | - | Content to check for similarity |
+| limit | integer | no | 5 | Max similar notes to return |
+| threshold | float | no | 0.7 | Minimum similarity (0-1) |
+
+**Example:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "find_similar",
+    "arguments": {
+      "content": "Working on neural network optimization",
+      "limit": 3,
+      "threshold": 0.85
+    }
+  }
+}
+```
+
+**Response:**
+```
+Found 2 similar notes (threshold: 85%):
+
+[#38] similarity: 92%
+Started neural net optimization experiments
+
+[#51] similarity: 87%
+Optimizing deep learning model performance
+```
+
+**Use with add_note:**
+The `add_note` tool automatically checks for duplicates:
+- **>95% similarity** — Blocks addition, returns existing note
+- **>90% similarity** — Warns but allows with `force: true` parameter
+- **<90% similarity** — Adds normally
+
+---
+
 ## Health Check
 
 **URL:** `/health`  

@@ -10,6 +10,21 @@ from typing import List, Tuple
 
 EXTRACTOR_TYPE = os.getenv("ENTITY_EXTRACTOR", "regex")
 
+# Lazy load spaCy to avoid import errors when not needed
+_spacy_nlp = None
+
+def get_spacy_model():
+    """Lazy loader for spaCy model"""
+    global _spacy_nlp
+    if _spacy_nlp is None:
+        try:
+            import spacy
+            _spacy_nlp = spacy.load("en_core_web_sm")
+        except (ImportError, OSError) as e:
+            print(f"Warning: spaCy not available ({e}), falling back to regex")
+            return None
+    return _spacy_nlp
+
 # Known entities dictionary - customize for your domain
 # Format: "lowercase_key": ("Display Name", "entity_type")
 KNOWN_ENTITIES = {
@@ -93,11 +108,62 @@ def extract_entities_regex(text: str) -> List[Tuple[str, str]]:
     return unique
 
 
+def extract_entities_spacy(text: str) -> List[Tuple[str, str]]:
+    """Extract entities using spaCy NER model"""
+    nlp = get_spacy_model()
+    if nlp is None:
+        # Fallback to regex if spaCy unavailable
+        return extract_entities_regex(text)
+    
+    doc = nlp(text)
+    entities = []
+    
+    # Map spaCy entity types to our types
+    SPACY_TO_OURS = {
+        "PERSON": "person",
+        "ORG": "org",
+        "GPE": "location",        # Geopolitical entity (countries, cities)
+        "LOC": "location",        # Non-GPE locations
+        "PRODUCT": "tech",        # Products, tools, software
+        "EVENT": "concept",
+        "WORK_OF_ART": "concept",
+        "LAW": "concept",
+        "LANGUAGE": "tech",
+        "DATE": "time",
+        "TIME": "time",
+        "MONEY": "concept",
+        "NORP": "concept",        # Nationalities, religious/political groups
+        "FAC": "location",        # Facilities (buildings, airports)
+    }
+    
+    for ent in doc.ents:
+        entity_type = SPACY_TO_OURS.get(ent.label_, "concept")
+        entities.append((ent.text, entity_type))
+    
+    # Also extract from known entities dictionary for domain-specific terms
+    text_lower = text.lower()
+    for key, (name, etype) in KNOWN_ENTITIES.items():
+        if key in text_lower:
+            # Only add if not already found by spaCy
+            if name.lower() not in [e[0].lower() for e in entities]:
+                entities.append((name, etype))
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique = []
+    for e in entities:
+        key = e[0].lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(e)
+    
+    return unique
+
+
 def extract_entities(text: str) -> List[Tuple[str, str]]:
     """Main entry point for entity extraction"""
     if EXTRACTOR_TYPE == "spacy":
-        # TODO: Implement spacy-based extraction
-        return extract_entities_regex(text)
+        return extract_entities_spacy(text)
     elif EXTRACTOR_TYPE == "llm":
         # TODO: Implement LLM-based extraction
         return extract_entities_regex(text)
