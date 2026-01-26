@@ -42,3 +42,8 @@ docker-compose.override.yml
 # Models cache
 models/
 .cache/
+
+# Internal planning (not for public)
+ROADMAP_INTERNAL.md
+TODO.md
+NOTES.md

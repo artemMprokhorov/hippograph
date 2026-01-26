@@ -44,9 +44,17 @@ def init_database():
                 timestamp TEXT,
                 embedding BLOB,
                 last_accessed TEXT,
-                access_count INTEGER DEFAULT 0
+                access_count INTEGER DEFAULT 0,
+                importance TEXT DEFAULT 'normal'
             )
         """)
+        
+        # Migration: add importance column if missing (for existing databases)
+        cursor.execute("PRAGMA table_info(nodes)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'importance' not in columns:
+            cursor.execute("ALTER TABLE nodes ADD COLUMN importance TEXT DEFAULT 'normal'")
+            print("  ↳ Added 'importance' column to nodes table")
         
         # Edges table (connections between nodes)
         cursor.execute("""
@@ -92,14 +100,14 @@ def init_database():
     print(f"✅ Database initialized: {DB_PATH}")
 
 
-def create_node(content, category="general", embedding=None):
-    """Create a new node (note)"""
+def create_node(content, category="general", embedding=None, importance="normal"):
+    """Create a new node (note). Importance: 'critical', 'normal', or 'low'"""
     timestamp = datetime.now().isoformat()
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count) VALUES (?, ?, ?, ?, ?, 0)",
-            (content, category, timestamp, embedding, timestamp)
+            "INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count, importance) VALUES (?, ?, ?, ?, ?, 0, ?)",
+            (content, category, timestamp, embedding, timestamp, importance)
         )
         return cursor.lastrowid
 
@@ -113,7 +121,7 @@ def get_node(node_id):
         return dict(row) if row else None
 
 
-def update_node(node_id, content=None, category=None, embedding=None):
+def update_node(node_id, content=None, category=None, embedding=None, importance=None):
     """Update existing node"""
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -130,6 +138,9 @@ def update_node(node_id, content=None, category=None, embedding=None):
         if embedding is not None:
             updates.append("embedding = ?")
             params.append(embedding)
+        if importance is not None:
+            updates.append("importance = ?")
+            params.append(importance)
         
         if not updates:
             return False
@@ -140,6 +151,16 @@ def update_node(node_id, content=None, category=None, embedding=None):
         
         sql = "UPDATE nodes SET " + ", ".join(updates) + " WHERE id = ?"
         cursor.execute(sql, params)
+        return cursor.rowcount > 0
+
+
+def set_importance(node_id, importance):
+    """Set importance level for a node: 'critical', 'normal', or 'low'"""
+    if importance not in ('critical', 'normal', 'low'):
+        raise ValueError("Importance must be 'critical', 'normal', or 'low'")
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE nodes SET importance = ? WHERE id = ?", (importance, node_id))
         return cursor.rowcount > 0
 
 

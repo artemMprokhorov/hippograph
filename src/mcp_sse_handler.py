@@ -70,12 +70,14 @@ def get_tools_list():
         },
         {
             "name": "add_note",
-            "description": "Add new note with automatic entity extraction and linking",
+            "description": "Add new note with automatic entity extraction and linking. Checks for duplicates.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "content": {"type": "string", "description": "Note content"},
-                    "category": {"type": "string", "default": "general"}
+                    "category": {"type": "string", "default": "general"},
+                    "importance": {"type": "string", "enum": ["critical", "normal", "low"], "default": "normal", "description": "Note importance level"},
+                    "force": {"type": "boolean", "default": False, "description": "Force add even if duplicate exists"}
                 },
                 "required": ["content"]
             }
@@ -115,6 +117,31 @@ def get_tools_list():
                 "properties": {"note_id": {"type": "integer"}},
                 "required": ["note_id"]
             }
+        },
+        {
+            "name": "set_importance",
+            "description": "Set importance level for a note: 'critical' (2x boost), 'normal', or 'low' (0.5x)",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "integer"},
+                    "importance": {"type": "string", "enum": ["critical", "normal", "low"]}
+                },
+                "required": ["note_id", "importance"]
+            }
+        },
+        {
+            "name": "find_similar",
+            "description": "Find notes similar to given content. Useful for checking before adding new notes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "content": {"type": "string", "description": "Content to find similar notes for"},
+                    "threshold": {"type": "number", "default": 0.7, "description": "Minimum similarity (0-1)"},
+                    "limit": {"type": "integer", "default": 5}
+                },
+                "required": ["content"]
+            }
         }
     ]
 
@@ -127,7 +154,12 @@ def handle_tool_call(params):
     if tool_name == "search_memory":
         return tool_search_memory(args.get("query", ""), args.get("limit", 5))
     elif tool_name == "add_note":
-        return tool_add_note(args.get("content", ""), args.get("category", "general"))
+        return tool_add_note(
+            args.get("content", ""), 
+            args.get("category", "general"),
+            args.get("importance", "normal"),
+            args.get("force", False)
+        )
     elif tool_name == "update_note":
         return tool_update_note(args.get("note_id"), args.get("content"), args.get("category"))
     elif tool_name == "delete_note":
@@ -136,6 +168,10 @@ def handle_tool_call(params):
         return tool_stats()
     elif tool_name == "get_graph":
         return tool_get_graph(args.get("note_id"))
+    elif tool_name == "set_importance":
+        return tool_set_importance(args.get("note_id"), args.get("importance"))
+    elif tool_name == "find_similar":
+        return tool_find_similar(args.get("content", ""), args.get("threshold", 0.7), args.get("limit", 5))
     
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
@@ -155,18 +191,32 @@ def tool_search_memory(query: str, limit: int):
     return {"content": [{"type": "text", "text": text}]}
 
 
-def tool_add_note(content: str, category: str):
-    """Add note with auto-linking"""
+def tool_add_note(content: str, category: str, importance: str = "normal", force: bool = False):
+    """Add note with auto-linking and duplicate detection"""
     if not content:
         return {"error": {"code": -32602, "message": "Content required"}}
     
-    result = add_note_with_links(content, category)
+    result = add_note_with_links(content, category, importance, force)
+    
+    # Handle duplicate error
+    if "error" in result and result["error"] == "duplicate":
+        text = f"⚠️ {result['message']}\n"
+        text += f"Existing note #{result['existing_id']}: {result['existing_content']}...\n"
+        text += f"Use force=true to add anyway."
+        return {"content": [{"type": "text", "text": text}]}
     
     text = f"✅ Added note #{result['node_id']}\n"
     text += f"Category: {category}\n"
+    text += f"Importance: {importance}\n"
     text += f"Entities found: {result['entities']}\n"
     text += f"Entity links created: {result['entity_links']}\n"
     text += f"Semantic links created: {result['semantic_links']}"
+    
+    # Add warning about similar notes
+    if "warning" in result:
+        text += f"\n\n⚠️ {result['warning']}:"
+        for sim in result.get("similar_notes", []):
+            text += f"\n  - Note #{sim['id']} (similarity: {sim['similarity']:.0%})"
     
     return {"content": [{"type": "text", "text": text}]}
 
@@ -235,6 +285,45 @@ def tool_get_graph(note_id: int):
     
     for conn in graph['connections']:
         text += f"  → [{conn['type']}] (weight: {conn['weight']:.2f}) #{conn['id']}: {conn['content']}\n"
+    
+    return {"content": [{"type": "text", "text": text}]}
+
+
+def tool_set_importance(note_id: int, importance: str):
+    """Set importance level for a note"""
+    if not note_id or not importance:
+        return {"error": {"code": -32602, "message": "Note ID and importance required"}}
+    
+    if importance not in ('critical', 'normal', 'low'):
+        return {"error": {"code": -32602, "message": "Importance must be 'critical', 'normal', or 'low'"}}
+    
+    from database import set_importance
+    success = set_importance(note_id, importance)
+    
+    if success:
+        multipliers = {'critical': '2.0x', 'normal': '1.0x', 'low': '0.5x'}
+        text = f"✅ Note #{note_id} importance set to '{importance}' ({multipliers[importance]} activation)"
+    else:
+        text = f"❌ Note #{note_id} not found"
+    
+    return {"content": [{"type": "text", "text": text}]}
+
+
+def tool_find_similar(content: str, threshold: float = 0.7, limit: int = 5):
+    """Find notes similar to given content"""
+    if not content:
+        return {"error": {"code": -32602, "message": "Content required"}}
+    
+    from graph_engine import find_similar_notes
+    similar = find_similar_notes(content, threshold, limit)
+    
+    if not similar:
+        text = f"No similar notes found (threshold: {threshold:.0%})"
+    else:
+        text = f"Found {len(similar)} similar notes:\n\n"
+        for s in similar:
+            text += f"[ID:{s['id']}] [{s['category']}] (similarity: {s['similarity']:.0%})\n"
+            text += f"{s['content']}...\n\n"
     
     return {"content": [{"type": "text", "text": text}]}
 

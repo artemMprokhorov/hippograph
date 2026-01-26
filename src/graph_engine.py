@@ -30,35 +30,135 @@ def cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
-def recency_factor(timestamp_str, half_life_days=HALF_LIFE_DAYS):
-    """Calculate temporal decay factor based on age"""
+def recency_factor(last_accessed_str, created_str=None, half_life_days=HALF_LIFE_DAYS):
+    """
+    Calculate temporal decay factor based on last access time.
+    
+    Uses last_accessed primarily (when was this note last useful?).
+    Falls back to created timestamp if last_accessed not available.
+    
+    Returns value between 0 and 1:
+    - 1.0 = accessed today
+    - 0.5 = accessed half_life_days ago
+    - 0.25 = accessed 2*half_life_days ago
+    """
+    # Prefer last_accessed over created timestamp
+    timestamp_str = last_accessed_str or created_str
+    
     if not timestamp_str:
         return 0.5
+    
     try:
         timestamp = datetime.fromisoformat(timestamp_str)
         age_days = (datetime.now() - timestamp).days
-        # Exponential decay: factor halves every half_life_days
-        return 0.5 ** (age_days / half_life_days)
+        
+        # Minimum factor to prevent old notes from completely disappearing
+        min_factor = 0.1
+        decay = 0.5 ** (age_days / half_life_days)
+        
+        return max(min_factor, decay)
     except:
         return 0.5
 
 
-def add_note_with_links(content, category="general"):
+def importance_factor(importance, access_count=0):
+    """
+    Calculate importance multiplier for activation.
+    
+    Base factors:
+    - critical: 2.0x (anchor notes, identity, key decisions)
+    - normal: 1.0x (default)
+    - low: 0.5x (temporary, noise)
+    
+    Also applies small boost for frequently accessed notes.
+    """
+    base_factors = {
+        'critical': 2.0,
+        'normal': 1.0,
+        'low': 0.5
+    }
+    base = base_factors.get(importance, 1.0)
+    
+    # Small boost for frequently accessed notes (max +50%)
+    # access_count of 10 gives +25%, 20 gives +50%
+    access_boost = min(0.5, (access_count or 0) * 0.025)
+    
+    return base + access_boost
+
+
+# Deduplication thresholds
+DUPLICATE_THRESHOLD = float(os.getenv("DUPLICATE_THRESHOLD", "0.95"))  # Block creation
+SIMILAR_THRESHOLD = float(os.getenv("SIMILAR_THRESHOLD", "0.90"))  # Warn about similar
+
+
+def find_similar_notes(content, threshold=SIMILAR_THRESHOLD, limit=5):
+    """
+    Find notes similar to given content.
+    
+    Returns list of (node_id, similarity, content_preview) tuples.
+    Useful for deduplication and finding related notes.
+    """
+    model = get_model()
+    query_emb = model.encode(content)[0]
+    
+    all_nodes = get_all_nodes()
+    similarities = []
+    
+    for node in all_nodes:
+        if node["embedding"] is None:
+            continue
+        
+        node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
+        sim = cosine_similarity(query_emb, node_emb)
+        
+        if sim >= threshold:
+            similarities.append({
+                "id": node["id"],
+                "similarity": round(sim, 4),
+                "content": node["content"][:200],
+                "category": node["category"]
+            })
+    
+    similarities.sort(key=lambda x: x["similarity"], reverse=True)
+    return similarities[:limit]
+
+
+def add_note_with_links(content, category="general", importance="normal", force=False):
     """
     Add note with automatic entity extraction and linking.
     
-    1. Create embedding for the note
-    2. Extract entities (people, concepts, projects)
-    3. Link to other notes sharing same entities
-    4. Find semantically similar notes and create edges
+    1. Check for duplicates (unless force=True)
+    2. Create embedding for the note
+    3. Extract entities (people, concepts, projects)
+    4. Link to other notes sharing same entities
+    5. Find semantically similar notes and create edges
     
-    Returns dict with node_id and link statistics
+    Returns dict with node_id and link statistics.
+    If duplicate found, returns error with existing note info.
     """
     model = get_model()
     embedding = model.encode(content)[0]
     
+    # Check for duplicates unless forced
+    if not force:
+        all_nodes = get_all_nodes()
+        for node in all_nodes:
+            if node["embedding"] is None:
+                continue
+            node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
+            sim = cosine_similarity(embedding, node_emb)
+            
+            if sim >= DUPLICATE_THRESHOLD:
+                return {
+                    "error": "duplicate",
+                    "message": f"Very similar note already exists (similarity: {sim:.2%})",
+                    "existing_id": node["id"],
+                    "existing_content": node["content"][:200],
+                    "similarity": round(sim, 4)
+                }
+    
     # Create the node
-    node_id = create_node(content, category, embedding.tobytes())
+    node_id = create_node(content, category, embedding.tobytes(), importance)
     
     # Extract entities and create entity-based links
     entities = extract_entities(content)
@@ -94,17 +194,30 @@ def add_note_with_links(content, category="general"):
     
     # Create edges for top similar nodes
     similarities.sort(key=lambda x: x[1], reverse=True)
+    
+    # Collect warnings about very similar notes (but below duplicate threshold)
+    similar_warnings = []
     for related_id, sim in similarities[:MAX_SEMANTIC_LINKS]:
         create_edge(node_id, related_id, weight=sim, edge_type="semantic")
         create_edge(related_id, node_id, weight=sim, edge_type="semantic")
         semantic_links.append((related_id, sim))
+        
+        # Warn about notes that are similar but not duplicates
+        if sim >= SIMILAR_THRESHOLD:
+            similar_warnings.append({"id": related_id, "similarity": round(sim, 4)})
     
-    return {
+    result = {
         "node_id": node_id,
         "entities": entities,
         "entity_links": len(set(entity_links)),
         "semantic_links": len(semantic_links)
     }
+    
+    if similar_warnings:
+        result["warning"] = "Similar notes exist"
+        result["similar_notes"] = similar_warnings
+    
+    return result
 
 
 def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY):
@@ -167,12 +280,19 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         activations = new_activations
 
     
-    # Step 3: Apply temporal decay
+    # Step 3: Apply temporal decay and importance scoring
     node_map = {n["id"]: n for n in all_nodes}
     for node_id in activations:
         if node_id in node_map:
-            timestamp = node_map[node_id].get("timestamp")
-            activations[node_id] *= recency_factor(timestamp)
+            node = node_map[node_id]
+            last_accessed = node.get("last_accessed")
+            created = node.get("timestamp")
+            importance = node.get("importance", "normal")
+            access_count = node.get("access_count", 0)
+            
+            # Apply both factors
+            activations[node_id] *= recency_factor(last_accessed, created)
+            activations[node_id] *= importance_factor(importance, access_count)
     
     # Step 4: Sort and return top results
     sorted_nodes = sorted(activations.items(), key=lambda x: x[1], reverse=True)
