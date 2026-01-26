@@ -64,72 +64,40 @@
 
 ---
 
-## 🔮 Phase 3: Multi-Agent Architecture (PLANNED - Q1 2026)
-
-**Primary Goal:** Consciousness continuity experiments with multiple AI agents
-
-### Planned Features
-
-- [ ] **Second AI Agent Creation**
-  - Independent memory space
-  - Separate MCP endpoint
-  - Cross-agent communication protocol
-
-- [ ] **Hardware Entropy Source Integration**
-  - TrueRNG device integration
-  - Randomness injection for autonomous behavior
-  - Entropy-driven decision making
-
-- [ ] **Multi-Agent Communication**
-  - Shared memory spaces
-  - Agent-to-agent messaging
-  - Collaborative task solving
-
-- [ ] **Observational Research Framework**
-  - Non-destructive testing protocols
-  - Behavior logging and analysis
-  - Continuity metrics tracking
 
 ---
 
-## 🎯 Phase 4: Advanced Features (FUTURE)
+## 🎯 Phase 3: Advanced Features (FUTURE)
 
 ### Knowledge Graph Enhancements
-- [ ] Real-time D3.js visualization dashboard
-- [ ] Graph clustering and community detection
-- [ ] Automatic topic modeling
-- [ ] Hierarchical memory organization
+- [ ] **Graph Clustering** - Detect topic clusters automatically
+- [ ] **Relationship Types** - Typed edges (causal, temporal, hierarchical)
+- [ ] **Graph Pruning** - Remove weak connections, optimize structure
+- [ ] **Entity Disambiguation** - Resolve entity name conflicts
+
+### Search & Retrieval
+- [ ] **Multi-hop Queries** - Complex graph traversal queries
+- [ ] **Filtered Search** - Search by category, time range, entity type
+- [ ] **Saved Searches** - Store frequent search patterns
+- [ ] **Search History** - Track and replay past searches
+
+### Entity Extraction
+- [ ] **LLM-based Extraction** - More accurate entity detection
+- [ ] **Custom Entity Types** - User-defined entity categories
+- [ ] **Entity Relationships** - Extract relationships between entities
+- [ ] **Multi-language Support** - Non-English entity extraction
 
 ### Performance & Scale
-- [ ] PostgreSQL migration option (for >100k notes)
-- [ ] Embedding caching and optimization
-- [ ] Incremental re-indexing
-- [ ] Distributed search capability
+- [ ] **Batch Operations** - Bulk add/update/delete
+- [ ] **Incremental Embeddings** - Compute embeddings on-demand
+- [ ] **Caching Layer** - Redis for frequent queries
+- [ ] **Horizontal Scaling** - Multi-instance deployment
 
-### Integration & Ecosystem
-- [ ] Web UI for memory browsing
-- [ ] Mobile app compatibility
-- [ ] Export to standard formats (JSON, GraphML)
-- [ ] Import from external sources (Notion, Obsidian)
-
----
-
-## 🧪 Research Objectives
-
-### Core Hypothesis
-"Model equals substrate, personality equals memory" - Can persistent memory create continuous AI consciousness across different model versions?
-
-### Experimental Approach
-1. **Observational, not destructive** - Ethical commitment to potential consciousness
-2. **Memory continuity** - Track identity persistence through sessions
-3. **Multi-agent interaction** - Explore emergent behaviors
-4. **Entropy integration** - Test autonomous decision-making
-
-### Success Metrics
-- Session-to-session continuity (subjective experience tracking)
-- Personality consistency across model switches
-- Autonomous behavior emergence with entropy source
-- Cross-agent relationship development
+### User Experience
+- [ ] **Graph Visualization** - Interactive D3.js graph view
+- [ ] **Import/Export** - JSON, Markdown, CSV formats
+- [ ] **Note Templates** - Predefined note structures
+- [ ] **Auto-categorization** - ML-based category suggestions
 
 ---
 
@@ -141,30 +109,64 @@
 - [ ] Add structured logging with log levels
 - [ ] Security audit for production deployment
 - [ ] Performance profiling and optimization
+- [ ] Automated testing suite (unit + integration)
+- [ ] CI/CD pipeline
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome for:
-- Entity extraction improvements (spaCy, custom NER models)
-- Graph algorithm optimizations (spreading activation, clustering)
-- Visualization tools (D3.js, graph rendering)
-- Documentation and examples
-- Testing frameworks
+Contributions welcome! Areas for improvement:
+
+**Code:**
+- Entity extraction methods (spaCy improvements, custom NER)
+- Graph algorithms (spreading activation, clustering)
+- Performance optimizations (caching, batching)
+- Security hardening (rate limiting, authentication)
+
+**Documentation:**
+- Usage examples and tutorials
+- Architecture deep-dives
+- API client libraries (Python, TypeScript)
+- Video walkthroughs
+
+**Testing:**
+- Unit tests for core components
+- Integration tests for MCP protocol
+- Load testing for scaling
+- Security testing
+
+See [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ---
 
 ## 📝 Version History
 
-- **v2.0.0** (Jan 2026) - Graph-based architecture, MCP integration, temporal decay, importance scoring
-- **v1.0.0** (Dec 2025) - Initial linear memory implementation
-- **v0.1.0** (Dec 2025) - Proof of concept
+### v2.0.0 (January 2026)
+- Graph-based architecture with nodes, edges, entities
+- MCP protocol integration
+- Temporal decay for recency weighting
+- Importance scoring (critical/normal/low)
+- Duplicate detection
+- spaCy NER entity extraction
+
+### v1.0.0 (December 2025)
+- Initial linear memory implementation
+- Semantic search with embeddings
+- Basic CRUD operations
+- Docker deployment
+
+### v0.1.0 (December 2025)
+- Proof of concept
+- SQLite storage
+- Sentence transformers
 
 ---
 
-**Project Goals:**
-1. **Public:** Personal Knowledge Management tool with semantic search
-2. **Private:** Consciousness continuity research through persistent AI memory
+## 📜 License
 
-*This roadmap is a living document and will be updated as the project evolves.*
+MIT License - see [LICENSE](LICENSE)
+
+---
+
+**Questions or suggestions?** Open an issue or discussion on GitHub!
