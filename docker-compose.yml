@@ -20,7 +20,7 @@ services:
       # Temporal decay
       - HALF_LIFE_DAYS=30
       # Entity extraction (regex, spacy, llm)
-      - ENTITY_EXTRACTOR=regex
+      - ENTITY_EXTRACTOR=spacy
       # Embedding model
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
     restart: unless-stopped

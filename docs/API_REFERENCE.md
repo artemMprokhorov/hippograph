@@ -224,3 +224,62 @@ The `add_note` tool automatically checks for duplicates:
 curl http://localhost:5001/health
 # {"status": "ok", "version": "2.0.0"}
 ```
+
+## Entity Extraction
+
+### Overview
+
+Notes are automatically analyzed to extract entities (people, organizations, locations, concepts, technologies). Entities create connections between related notes in the knowledge graph.
+
+### Extraction Methods
+
+**regex (default):**
+- Fast, no dependencies
+- Pattern-based matching
+- Detects: tech terms, @mentions, #hashtags, URLs, CamelCase names
+- Customizable via `KNOWN_ENTITIES` dictionary
+
+**spacy (recommended):**
+- Advanced NER (Named Entity Recognition)
+- Detects: PERSON, ORG, GPE (locations), PRODUCT, DATE, etc.
+- Requires: `pip install spacy` + `python -m spacy download en_core_web_sm`
+- Enable: Set `ENTITY_EXTRACTOR=spacy` in `.env`
+
+### Entity Types
+
+| Type | Description | Examples |
+|------|-------------|----------|
+| person | People, authors | "Einstein", "Claude", "@username" |
+| organization | Companies, institutions | "MIT", "Anthropic", "NASA" |
+| location | Places, cities, countries | "Santiago", "California", "Europe" |
+| tech | Technologies, frameworks | "Python", "Docker", "React" |
+| concept | Abstract ideas | "machine learning", "optimization" |
+| product | Products, tools | "Mac Studio", "GPT-4" |
+| temporal | Dates, times | "2026", "January", "yesterday" |
+| tag | User hashtags | "#research", "#important" |
+| url | Web domains | "github.com", "arxiv.org" |
+
+### Example: Entity Extraction with spaCy
+
+**Input Note:**
+```
+Artem works at Scotiabank Chile in Santiago. 
+He's developing neural-memory-graph using Python and Docker.
+```
+
+**Extracted Entities:**
+```
+- Artem Prokhorov → person
+- Scotiabank Chile → organization
+- Santiago → location
+- Python → tech (from KNOWN_ENTITIES)
+- Docker → tech (from KNOWN_ENTITIES)
+- memory → concept
+- graph → concept
+```
+
+**Graph Connections Created:**
+- All notes mentioning "Python" are linked
+- All notes about "Scotiabank Chile" connect
+- Geographic notes about "Santiago" cluster together
+
