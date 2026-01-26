@@ -50,8 +50,8 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 ### Prerequisites
 
 - Docker & Docker Compose
-- ngrok account (for remote access) or reverse proxy
-- Python 3.9+ (for local development only)
+- 4GB+ RAM, 3GB+ disk space
+- For remote access: Reverse proxy (ngrok, Cloudflare Tunnel, or custom)
 
 ### 1. Clone & Configure
 
@@ -59,10 +59,10 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 git clone https://github.com/artemMprokhorov/neural-memory-graph.git
 cd neural-memory-graph
 cp .env.example .env
-# Edit .env and set a strong NEURAL_API_KEY
+# Edit .env and set a strong NEURAL_API_KEY (32+ characters)
 ```
 
-### 2. Start with Docker
+### 2. Start Server
 
 ```bash
 docker-compose up -d
@@ -70,24 +70,33 @@ docker-compose up -d
 
 The server will:
 - Download embedding models (~2GB on first run)
-- Download spaCy model for entity extraction
+- Download spaCy model for entity extraction  
 - Initialize SQLite database
-- Start on port 5001
+- Start on `http://localhost:5000`
 
-### 3. Setup Remote Access
+### 3. Verify Installation
 
 ```bash
-# Using ngrok (recommended for testing)
-ngrok http 5001
-# Note your https://xxx.ngrok-free.app URL
+curl http://localhost:5000/health
+# Expected: {"status": "ok", "version": "2.0.0"}
 ```
 
-### 4. Connect to Claude.ai
+### 4. Setup Remote Access (Optional)
 
-1. Go to Settings → Integrations
-2. Add Remote MCP Server
-3. Enter: `https://your-subdomain.ngrok-free.app/sse?api_key=YOUR_API_KEY`
-4. Test: Ask Claude "What tools do you have available?"
+For Claude.ai integration or remote use, you need a public HTTPS URL.  
+See [Setup Guide](docs/SETUP_GUIDE.md) for options:
+- **ngrok** - Quick testing (free tier)
+- **Cloudflare Tunnel** - Persistent URL (recommended)
+- **Custom reverse proxy** - Nginx, Caddy, etc.
+
+### 5. Connect to Claude.ai
+
+Once you have a public URL:
+1. Go to **Claude.ai → Settings → Integrations**
+2. **Add Remote MCP Server**
+3. Enter: `https://your-domain.com/sse?api_key=YOUR_API_KEY`
+
+See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 
 ---
 
