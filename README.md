@@ -2,7 +2,7 @@
   <img src="logo.svg" width="200" alt="Neural Memory Graph Logo">
 </p>
 
-# Neural Memory Graph
+# HippoGraph
 
 **Personal Knowledge Management with Semantic Graph Memory**
 
@@ -56,8 +56,8 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 ### 1. Clone & Configure
 
 ```bash
-git clone https://github.com/artemMprokhorov/neural-memory-graph.git
-cd neural-memory-graph
+git clone https://github.com/artemMprokhorov/hippograph.git
+cd hippograph
 cp .env.example .env
 # Edit .env and set a strong NEURAL_API_KEY (32+ characters)
 ```
@@ -226,7 +226,7 @@ This is not audited for production use with sensitive data.
 ## 📦 Project Structure
 
 ```
-neural-memory-graph/
+hippograph/
 ├── src/
 │   ├── server.py              # Flask app entry
 │   ├── database.py            # Graph database layer

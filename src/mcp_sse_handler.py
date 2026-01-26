@@ -42,7 +42,7 @@ def handle_mcp_request(method, params):
             return {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "neural-memory-graph", "version": "2.0.0"}
+                "serverInfo": {"name": "hippograph", "version": "2.0.0"}
             }
         elif method == "tools/list":
             return {"tools": get_tools_list()}

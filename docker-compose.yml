@@ -1,7 +1,7 @@
 services:
-  neural-memory:
+  hippograph:
     build: .
-    container_name: neural-memory-graph
+    container_name: hippograph
     ports:
       - "5000:5000"
     volumes:
