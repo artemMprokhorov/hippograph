@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""
+Database layer for Neural Memory Graph
+SQLite with graph schema: nodes, edges, entities
+"""
+
+import sqlite3
+import os
+from datetime import datetime
+from contextlib import contextmanager
+
+DB_PATH = os.getenv("DB_PATH", "/app/data/memory.db")
+
+
+@contextmanager
+def get_connection():
+    """Context manager for database connections"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_database():
+    """Initialize database schema"""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Nodes table (notes)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS nodes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content TEXT NOT NULL,
+                category TEXT DEFAULT 'general',
+                timestamp TEXT,
+                embedding BLOB,
+                last_accessed TEXT,
+                access_count INTEGER DEFAULT 0
+            )
+        """)
+        
+        # Edges table (connections between nodes)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS edges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id INTEGER NOT NULL,
+                target_id INTEGER NOT NULL,
+                weight REAL DEFAULT 0.5,
+                edge_type TEXT DEFAULT 'semantic',
+                created_at TEXT,
+                FOREIGN KEY (source_id) REFERENCES nodes(id) ON DELETE CASCADE,
+                FOREIGN KEY (target_id) REFERENCES nodes(id) ON DELETE CASCADE,
+                UNIQUE(source_id, target_id, edge_type)
+            )
+        """)
+        
+        # Entities table (extracted concepts, people, projects)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS entities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                entity_type TEXT DEFAULT 'concept'
+            )
+        """)
+        
+        # Node-Entity linking table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS node_entities (
+                node_id INTEGER NOT NULL,
+                entity_id INTEGER NOT NULL,
+                PRIMARY KEY (node_id, entity_id),
+                FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE,
+                FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Indexes for performance
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_source ON edges(source_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_edges_target ON edges(target_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_entities_node ON node_entities(node_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_node_entities_entity ON node_entities(entity_id)")
+        
+    print(f"✅ Database initialized: {DB_PATH}")
+
+
+def create_node(content, category="general", embedding=None):
+    """Create a new node (note)"""
+    timestamp = datetime.now().isoformat()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count) VALUES (?, ?, ?, ?, ?, 0)",
+            (content, category, timestamp, embedding, timestamp)
+        )
+        return cursor.lastrowid
+
+
+def get_node(node_id):
+    """Get node by ID"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM nodes WHERE id = ?", (node_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def update_node(node_id, content=None, category=None, embedding=None):
+    """Update existing node"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        updates = []
+        params = []
+        
+        if content is not None:
+            updates.append("content = ?")
+            params.append(content)
+        if category is not None:
+            updates.append("category = ?")
+            params.append(category)
+        if embedding is not None:
+            updates.append("embedding = ?")
+            params.append(embedding)
+        
+        if not updates:
+            return False
+        
+        updates.append("timestamp = ?")
+        params.append(datetime.now().isoformat())
+        params.append(node_id)
+        
+        sql = "UPDATE nodes SET " + ", ".join(updates) + " WHERE id = ?"
+        cursor.execute(sql, params)
+        return cursor.rowcount > 0
+
+
+def delete_node(node_id):
+    """Delete node and return its data"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT content, category FROM nodes WHERE id = ?", (node_id,))
+        node = cursor.fetchone()
+        if not node:
+            return None
+        cursor.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
+        return dict(node)
+
+
+def get_all_nodes():
+    """Get all nodes ordered by timestamp"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM nodes ORDER BY timestamp DESC")
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def touch_node(node_id):
+    """Update last_accessed and increment access_count"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE nodes SET last_accessed = ?, access_count = access_count + 1 WHERE id = ?",
+            (datetime.now().isoformat(), node_id)
+        )
+
+
+def create_edge(source_id, target_id, weight=0.5, edge_type="semantic"):
+    """Create edge between nodes (or update weight if exists)"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO edges (source_id, target_id, weight, edge_type, created_at) VALUES (?, ?, ?, ?, ?)",
+                (source_id, target_id, weight, edge_type, datetime.now().isoformat())
+            )
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            # Edge exists, update weight if higher
+            cursor.execute(
+                "UPDATE edges SET weight = MAX(weight, ?) WHERE source_id = ? AND target_id = ? AND edge_type = ?",
+                (weight, source_id, target_id, edge_type)
+            )
+            return None
+
+
+def get_connected_nodes(node_id):
+    """Get all nodes connected to given node"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT DISTINCT n.*, e.weight, e.edge_type
+               FROM nodes n
+               JOIN edges e ON (n.id = e.target_id AND e.source_id = ?)
+                            OR (n.id = e.source_id AND e.target_id = ?)
+               WHERE n.id != ?""",
+            (node_id, node_id, node_id)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_or_create_entity(name, entity_type="concept"):
+    """Get existing entity or create new one"""
+    name_lower = name.lower().strip()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM entities WHERE LOWER(name) = ?", (name_lower,))
+        row = cursor.fetchone()
+        if row:
+            return row["id"]
+        cursor.execute("INSERT INTO entities (name, entity_type) VALUES (?, ?)", (name, entity_type))
+        return cursor.lastrowid
+
+
+def link_node_to_entity(node_id, entity_id):
+    """Link node to entity"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO node_entities (node_id, entity_id) VALUES (?, ?)", (node_id, entity_id))
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+
+def get_nodes_by_entity(entity_id):
+    """Get all nodes linked to an entity"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT n.* FROM nodes n JOIN node_entities ne ON n.id = ne.node_id WHERE ne.entity_id = ?",
+            (entity_id,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_stats():
+    """Get database statistics"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) as count FROM nodes")
+        total_nodes = cursor.fetchone()["count"]
+        
+        cursor.execute("SELECT COUNT(*) as count FROM edges")
+        total_edges = cursor.fetchone()["count"]
+        
+        cursor.execute("SELECT COUNT(*) as count FROM entities")
+        total_entities = cursor.fetchone()["count"]
+        
+        cursor.execute("SELECT category, COUNT(*) as count FROM nodes GROUP BY category")
+        by_category = {row["category"]: row["count"] for row in cursor.fetchall()}
+        
+        cursor.execute("SELECT edge_type, COUNT(*) as count FROM edges GROUP BY edge_type")
+        by_edge_type = {row["edge_type"]: row["count"] for row in cursor.fetchall()}
+        
+        return {
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "total_entities": total_entities,
+            "nodes_by_category": by_category,
+            "edges_by_type": by_edge_type
+        }

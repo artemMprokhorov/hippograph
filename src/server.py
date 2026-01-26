@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Semantic Memory v2 Server
+Neural Memory Graph Server
 Flask application with MCP SSE endpoint
 """
 
@@ -33,7 +33,7 @@ def create_app():
 def main():
     """Run the server"""
     print("=" * 60)
-    print("🧠 Semantic Memory v2 - Knowledge Graph")
+    print("🧠 Neural Memory Graph - Knowledge Graph Memory System")
     print("=" * 60)
     
     app = create_app()
@@ -43,6 +43,8 @@ def main():
     
     print(f"\n🚀 Server starting on port {port}")
     print(f"   Debug mode: {debug}")
+    print(f"   MCP endpoint: /sse")
+    print(f"   Health check: /health")
     print("=" * 60)
     
     app.run(host="0.0.0.0", port=port, debug=debug)

@@ -4,9 +4,9 @@
 
 # Neural Memory Graph
 
-**Advanced Personal Knowledge Management with Semantic Graph Memory**
+**Personal Knowledge Management with Semantic Graph Memory**
 
-A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-based semantic memory to Claude and other AI assistants. Store notes, discover connections automatically, and search by meaning across your knowledge base.
+A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-based semantic memory to AI assistants. Store notes, discover connections automatically, and search by meaning across your knowledge base.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-green.svg)
@@ -14,7 +14,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 
 ---
 
-## ✨ What's New in v2
+## ✨ Features
 
 **Graph-Based Memory Architecture:**
 - 🕸️ **Automatic Entity Extraction** — Identifies people, concepts, projects from your notes
@@ -22,21 +22,23 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
 
-**Enhanced Features:**
+**Technical Features:**
 - 384-dimensional semantic embeddings (all-MiniLM-L6-v2)
 - SQLite graph database with nodes, edges, and entities
 - Automatic relationship detection between notes
-- MCP protocol integration for Claude.ai
+- MCP protocol integration for AI assistants
+- Temporal decay for recency-weighted search
+- Docker-ready deployment
 
 ---
 
-## 🎯 Real-World Use Cases
+## 🎯 Use Cases
 
-- 📚 **Long-term Projects** — AI remembers architectural decisions, coding preferences, context across sessions
-- 🔬 **Research Workflows** — Build semantic knowledge base from papers, connect related findings automatically
+- 📚 **Long-term Projects** — Remember architectural decisions, preferences, context across sessions
+- 🔬 **Research Workflows** — Build semantic knowledge base, connect related findings automatically
 - 💼 **Business Context** — Maintain understanding of workflows, track project relationships
 - 🧠 **Personal Knowledge Management** — Second brain with automatic idea connections
-- 🛠️ **Developer Productivity** — Remember codebase details, track related bugs and solutions
+- 🛠️ **Developer Productivity** — Track codebase details, related bugs and solutions
 
 ---
 
@@ -45,8 +47,8 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 ### Prerequisites
 
 - Docker & Docker Compose
-- ngrok account (for remote access)
-- Python 3.9+ (for local development)
+- ngrok account (for remote access) or reverse proxy
+- Python 3.9+ (for local development only)
 
 ### 1. Clone & Configure
 
@@ -63,17 +65,19 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-### 3. Setup ngrok Tunnel
+### 3. Setup Remote Access
 
 ```bash
-ngrok http 5000
+# Using ngrok
+ngrok http 5001
 ```
 
-### 4. Connect to Claude.ai
+### 4. Connect to AI Assistant
 
-1. Go to Claude.ai → Settings → Integrations
+For Claude.ai:
+1. Go to Settings → Integrations
 2. Add Remote MCP Server
-3. Enter: `https://your-subdomain.ngrok-free.app/sse2?api_key=YOUR_KEY`
+3. Enter: `https://your-subdomain.ngrok-free.app/sse?api_key=YOUR_KEY`
 
 ---
 
@@ -83,20 +87,12 @@ ngrok http 5000
 - **RAM:** 4GB (embedding model ~2GB)
 - **Disk:** 3GB free (Docker image + models)
 - **CPU:** Modern x64/ARM64 processor
-- **OS:** Linux, macOS, Windows (Docker required)
+- **OS:** Linux, macOS, Windows (with Docker)
 
 ### Recommended
 - **RAM:** 8GB+
 - **Disk:** 5GB+ for larger knowledge bases
 - **SSD:** Faster embedding operations
-
-### Tested On
-- macOS Apple Silicon (M3 Ultra)
-
-### Should Work On
-- Linux with Docker support
-- Windows 11 + WSL2 + Docker Desktop
-- macOS Intel/ARM
 
 ---
 
@@ -104,7 +100,7 @@ ngrok http 5000
 
 | Tool | Description |
 |------|-------------|
-| `search_memory` | Semantic search through knowledge graph |
+| `search_memory` | Semantic search with spreading activation |
 | `add_note` | Save note with auto-embedding and entity extraction |
 | `update_note` | Modify existing note, recompute connections |
 | `delete_note` | Remove note and its graph relationships |
@@ -157,38 +153,43 @@ Search Query
 
 ---
 
-## 🔒 Security Note
+## 🔒 Security
 
-This is a research project. While it runs on your infrastructure, it's not audited for production use with sensitive data. Use at your own risk.
+This is a research/personal project. Not audited for production use with sensitive data.
 
 **Best Practices:**
 - Use strong API keys (32+ characters)
 - Rotate keys periodically
+- Use HTTPS (never expose HTTP publicly)
 - Restrict server access (firewall/VPN)
-- Monitor access logs
 
 ---
 
 ## 📖 Documentation
 
-- [Graph Features Guide](docs/GRAPH_FEATURES.md)
-- [MCP Integration](docs/MCP_INTEGRATION.md)
+- [Setup Guide](docs/SETUP_GUIDE.md)
 - [API Reference](docs/API_REFERENCE.md)
-- [Docker Setup](docs/DOCKER_SETUP.md)
+- [MCP Integration](docs/MCP_INTEGRATION.md)
+- [Graph Features](docs/GRAPH_FEATURES.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ---
 
 ## 📦 Project Structure
 
 ```
-neural-memory-mcp-v2/
+neural-memory-graph/
 ├── src/
 │   ├── server.py              # Flask app entry
 │   ├── database.py            # Graph database layer
 │   ├── graph_engine.py        # Spreading activation
-│   ├── entity_extractor.py    # NER for entities
+│   ├── entity_extractor.py    # Entity extraction
 │   ├── stable_embeddings.py   # Embedding model
 │   └── mcp_sse_handler.py     # MCP protocol
+├── scripts/
+│   ├── backup.sh              # Database backup
+│   ├── restore.sh             # Database restore
+│   └── recompute_embeddings.py
 ├── docs/
 ├── docker-compose.yml
 ├── Dockerfile
@@ -207,16 +208,3 @@ Contributions welcome! This project explores semantic memory systems and knowled
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-## 👥 Authors
-
-**Artem Prokhorov** — System architecture, infrastructure, research direction  
-**Claude** (Anthropic) — Co-developer, graph algorithms, documentation
-
-*Built through human-AI collaboration*
-
----
-
-**Made with 🧠 by Artem Prokhorov & Claude**
