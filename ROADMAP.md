@@ -103,6 +103,78 @@
 
 ## 📊 Technical Debt
 
+
+---
+
+## 🏢 Phase 4: Enterprise Features (FUTURE - For Production Use)
+
+*Note: Current implementation is optimized for personal use (~200-1000 notes). The following features would be required for enterprise deployment at scale.*
+
+### Graph Analytics & Intelligence
+- [ ] **Centrality Analysis** - Identify key nodes using PageRank, betweenness centrality
+- [ ] **Community Detection** - Automatic clustering of related knowledge domains
+- [ ] **Path Scoring** - Weighted pathfinding between concepts
+- [ ] **Graph Metrics Dashboard** - Network density, diameter, clustering coefficient
+- [ ] **Anomaly Detection** - Identify orphaned or over-connected nodes
+
+**Why:** At enterprise scale (10k+ notes), understanding network structure becomes critical for knowledge discovery and organization.
+
+### Memory Hierarchy & Lifecycle
+- [ ] **Short-term Memory** - Session-based working memory (24h retention)
+- [ ] **Long-term Memory** - Permanent storage with reinforcement learning
+- [ ] **Working Memory Cache** - Recently accessed nodes in fast storage
+- [ ] **Memory Consolidation** - Automated archival of stale content
+- [ ] **Access-based Promotion** - Frequently used short-term → long-term
+
+**Why:** Mimics human memory architecture; improves performance by tiering storage based on access patterns.
+
+### Architectural Improvements
+- [ ] **Layer Separation** - Clean boundaries between ingestion/storage/retrieval/reasoning
+- [ ] **Service-Oriented Architecture** - Separate microservices for each layer
+- [ ] **Event-Driven Processing** - Async message queues for note processing
+- [ ] **CQRS Pattern** - Separate read/write models for scaling
+- [ ] **API Gateway** - Unified entry point with rate limiting, auth
+
+**Why:** Current architecture mixes concerns for simplicity; enterprise needs clean separation for maintainability and scaling.
+
+### Security & Compliance
+- [ ] **Multi-tenancy** - Isolated memory spaces per user/organization
+- [ ] **Role-based Access Control** - Granular permissions on notes/categories
+- [ ] **Audit Logging** - Track all changes with timestamp/user
+- [ ] **Encryption at Rest** - Database-level encryption
+- [ ] **SOC 2 Compliance** - Security controls and audits
+
+**Why:** Enterprise data governance and regulatory requirements.
+
+### Observability & Operations
+- [ ] **Distributed Tracing** - Request flow across services
+- [ ] **Prometheus Metrics** - Query latency, throughput, cache hit rates
+- [ ] **Structured Logging** - Centralized log aggregation (ELK stack)
+- [ ] **Health Checks** - Deep health monitoring beyond simple ping
+- [ ] **Auto-scaling** - Horizontal pod autoscaling based on load
+
+**Why:** Production operations require deep visibility into system behavior.
+
+### Performance at Scale
+- [ ] **Vector Index Optimization** - HNSW/IVF-PQ for large-scale similarity search
+- [ ] **Read Replicas** - Database replication for read-heavy workloads
+- [ ] **Connection Pooling** - Efficient database connection management
+- [ ] **Materialized Views** - Pre-computed graph metrics
+- [ ] **CDN for Static Assets** - Distributed caching
+
+**Why:** Current SQLite + in-memory FAISS works for personal use but won't scale to millions of notes.
+
+### Estimated Effort
+- **Graph Analytics**: 2-3 weeks
+- **Memory Hierarchy**: 3-4 weeks
+- **Architecture Refactor**: 4-6 weeks
+- **Security/Compliance**: 2-3 weeks
+- **Observability**: 1-2 weeks
+- **Performance Optimization**: 2-3 weeks
+
+**Total: ~3-4 months** for enterprise-ready production deployment
+
+
 - [ ] Migrate from Flask development server to production WSGI (Gunicorn)
 - [ ] Add comprehensive error handling and retry logic
 - [ ] Implement rate limiting for MCP endpoints
