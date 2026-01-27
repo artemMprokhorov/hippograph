@@ -102,16 +102,30 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 
 ## 📋 System Requirements
 
-### Minimum
-- **RAM:** 4GB (embedding model ~2GB)
-- **Disk:** 3GB free (Docker image + models)
-- **CPU:** Modern x64/ARM64 processor
+### Minimum (for ~500-1000 notes)
+- **RAM:** 2GB minimum (breakdown below)
+  - sentence-transformers model: ~500 MB
+  - spaCy NER model: ~13 MB
+  - FAISS index: ~1-2 MB per 1000 nodes
+  - Graph cache: ~1-2 MB per 20K edges
+  - Python runtime + dependencies: ~300 MB
+- **Disk:** 2GB free (Docker image + models)
+- **CPU:** Modern x64/ARM64 processor (no GPU needed)
 - **OS:** Linux, macOS, Windows (with Docker)
 
-### Recommended
-- **RAM:** 8GB+
-- **Disk:** 5GB+ for larger knowledge bases
-- **SSD:** Faster embedding operations
+### Recommended (for 5000+ notes)
+- **RAM:** 4GB+ (for larger graphs and concurrent requests)
+- **Disk:** 5GB+ (for database growth)
+- **SSD:** Highly recommended for faster SQLite operations
+- **CPU:** 2+ cores for better MCP concurrency
+
+### Performance Notes
+- **ANN Index (FAISS):** Loads all node embeddings into RAM at startup
+  - Scales: ~400 KB per 1000 nodes (384-dim vectors)
+- **Graph Cache:** Loads all edges into RAM for O(1) lookup
+  - Scales: ~1 MB per 20K edges (bidirectional dict)
+- **Cold Start:** ~2-5 seconds to rebuild indices on container restart
+- **Search Speed:** O(log n) with ANN index, fully in-memory graph traversal
 
 ---
 
