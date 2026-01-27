@@ -123,12 +123,13 @@ def find_similar_notes(content, threshold=SIMILAR_THRESHOLD, limit=5):
     return similarities[:limit]
 
 
-def add_note_with_links(content, category="general", importance="normal", force=False):
+def add_note_with_links(content, category="general", importance="normal", force=False,
+                        emotional_tone=None, emotional_intensity=5, emotional_reflection=None):
     """
-    Add note with automatic entity extraction and linking.
+    Add note with automatic entity extraction, linking, and emotional context.
     
     1. Check for duplicates (unless force=True)
-    2. Create embedding for the note
+    2. Create embedding (includes emotional context if provided)
     3. Extract entities (people, concepts, projects)
     4. Link to other notes sharing same entities
     5. Find semantically similar notes and create edges
@@ -137,7 +138,18 @@ def add_note_with_links(content, category="general", importance="normal", force=
     If duplicate found, returns error with existing note info.
     """
     model = get_model()
-    embedding = model.encode(content)[0]
+    
+    # Include emotional context in embedding if provided
+    full_text = content
+    if emotional_tone or emotional_reflection:
+        emotional_context = []
+        if emotional_tone:
+            emotional_context.append(f"Emotional tone: {emotional_tone}")
+        if emotional_reflection:
+            emotional_context.append(emotional_reflection)
+        full_text = f"{content}\n\n{'. '.join(emotional_context)}"
+    
+    embedding = model.encode(full_text)[0]
     
     # Check for duplicates unless forced
     if not force:
@@ -157,8 +169,9 @@ def add_note_with_links(content, category="general", importance="normal", force=
                     "similarity": round(sim, 4)
                 }
     
-    # Create the node
-    node_id = create_node(content, category, embedding.tobytes(), importance)
+    # Create the node with emotional context
+    node_id = create_node(content, category, embedding.tobytes(), importance,
+                         emotional_tone, emotional_intensity, emotional_reflection)
     
     # Extract entities and create entity-based links
     entities = extract_entities(content)

@@ -45,7 +45,10 @@ def init_database():
                 embedding BLOB,
                 last_accessed TEXT,
                 access_count INTEGER DEFAULT 0,
-                importance TEXT DEFAULT 'normal'
+                importance TEXT DEFAULT 'normal',
+                emotional_tone TEXT,
+                emotional_intensity INTEGER DEFAULT 5,
+                emotional_reflection TEXT
             )
         """)
         
@@ -100,14 +103,21 @@ def init_database():
     print(f"✅ Database initialized: {DB_PATH}")
 
 
-def create_node(content, category="general", embedding=None, importance="normal"):
-    """Create a new node (note). Importance: 'critical', 'normal', or 'low'"""
+def create_node(content, category="general", embedding=None, importance="normal", 
+                emotional_tone=None, emotional_intensity=5, emotional_reflection=None):
+    """Create a new node (note). 
+    Importance: 'critical', 'normal', or 'low'
+    Emotional fields: tone (keywords), intensity (0-10), reflection (narrative)
+    """
     timestamp = datetime.now().isoformat()
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count, importance) VALUES (?, ?, ?, ?, ?, 0, ?)",
-            (content, category, timestamp, embedding, timestamp, importance)
+            """INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count, 
+               importance, emotional_tone, emotional_intensity, emotional_reflection) 
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)""",
+            (content, category, timestamp, embedding, timestamp, importance, 
+             emotional_tone, emotional_intensity, emotional_reflection)
         )
         return cursor.lastrowid
 
@@ -121,7 +131,8 @@ def get_node(node_id):
         return dict(row) if row else None
 
 
-def update_node(node_id, content=None, category=None, embedding=None, importance=None):
+def update_node(node_id, content=None, category=None, embedding=None, importance=None,
+                emotional_tone=None, emotional_intensity=None, emotional_reflection=None):
     """Update existing node"""
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -141,6 +152,15 @@ def update_node(node_id, content=None, category=None, embedding=None, importance
         if importance is not None:
             updates.append("importance = ?")
             params.append(importance)
+        if emotional_tone is not None:
+            updates.append("emotional_tone = ?")
+            params.append(emotional_tone)
+        if emotional_intensity is not None:
+            updates.append("emotional_intensity = ?")
+            params.append(emotional_intensity)
+        if emotional_reflection is not None:
+            updates.append("emotional_reflection = ?")
+            params.append(emotional_reflection)
         
         if not updates:
             return False

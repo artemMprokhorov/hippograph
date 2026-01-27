@@ -70,14 +70,17 @@ def get_tools_list():
         },
         {
             "name": "add_note",
-            "description": "Add new note with automatic entity extraction and linking. Checks for duplicates.",
+            "description": "Add new note with automatic entity extraction, linking, and emotional context. Checks for duplicates.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "content": {"type": "string", "description": "Note content"},
                     "category": {"type": "string", "default": "general"},
                     "importance": {"type": "string", "enum": ["critical", "normal", "low"], "default": "normal", "description": "Note importance level"},
-                    "force": {"type": "boolean", "default": False, "description": "Force add even if duplicate exists"}
+                    "force": {"type": "boolean", "default": False, "description": "Force add even if duplicate exists"},
+                    "emotional_tone": {"type": "string", "description": "Keywords describing emotional tone (e.g., 'joy, validation, trust')"},
+                    "emotional_intensity": {"type": "integer", "default": 5, "minimum": 0, "maximum": 10, "description": "Emotional intensity from 0 (none) to 10 (very strong)"},
+                    "emotional_reflection": {"type": "string", "description": "Narrative reflection on emotional context"}
                 },
                 "required": ["content"]
             }
@@ -191,12 +194,14 @@ def tool_search_memory(query: str, limit: int):
     return {"content": [{"type": "text", "text": text}]}
 
 
-def tool_add_note(content: str, category: str, importance: str = "normal", force: bool = False):
-    """Add note with auto-linking and duplicate detection"""
+def tool_add_note(content: str, category: str, importance: str = "normal", force: bool = False,
+                  emotional_tone: str = None, emotional_intensity: int = 5, emotional_reflection: str = None):
+    """Add note with auto-linking, duplicate detection, and emotional context"""
     if not content:
         return {"error": {"code": -32602, "message": "Content required"}}
     
-    result = add_note_with_links(content, category, importance, force)
+    result = add_note_with_links(content, category, importance, force,
+                                 emotional_tone, emotional_intensity, emotional_reflection)
     
     # Handle duplicate error
     if "error" in result and result["error"] == "duplicate":
@@ -208,6 +213,9 @@ def tool_add_note(content: str, category: str, importance: str = "normal", force
     text = f"✅ Added note #{result['node_id']}\n"
     text += f"Category: {category}\n"
     text += f"Importance: {importance}\n"
+    if emotional_tone:
+        text += f"Emotional tone: {emotional_tone}\n"
+        text += f"Intensity: {emotional_intensity}/10\n"
     text += f"Entities found: {result['entities']}\n"
     text += f"Entity links created: {result['entity_links']}\n"
     text += f"Semantic links created: {result['semantic_links']}"
