@@ -10,6 +10,9 @@ services:
       - DB_PATH=/app/data/memory.db
       - FLASK_PORT=5000
       - FLASK_DEBUG=false
+      - MCP_ENDPOINT=/sse
+      # Emotional memory (optional, disabled by default)
+      - ENABLE_EMOTIONAL_MEMORY=false
       - NEURAL_API_KEY=${NEURAL_API_KEY:-change_me_in_production}
       # Spreading Activation settings
       - ACTIVATION_ITERATIONS=3
@@ -21,6 +24,12 @@ services:
       - ENTITY_EXTRACTOR=spacy
       # Embedding model
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      # ANN Indexing (fast O(log n) search)
+      - USE_ANN_INDEX=true
+      - ANN_INDEX_TYPE=HNSW
+      - HNSW_M=32
+      - HNSW_EF_CONSTRUCTION=64
+      - HNSW_EF_SEARCH=32
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]

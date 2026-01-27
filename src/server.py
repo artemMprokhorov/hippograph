@@ -14,6 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from database import init_database
 from mcp_sse_handler import create_mcp_endpoint
+from ann_index import rebuild_index
+from database import get_all_nodes
 
 
 def create_app():
@@ -23,6 +25,11 @@ def create_app():
     
     # Initialize database
     init_database()
+    
+    # Build ANN index for fast search
+    nodes = get_all_nodes()
+    vector_count = rebuild_index(nodes)
+    print(f"📊 Built ANN index with {vector_count} vectors")
     
     # Register MCP endpoint
     create_mcp_endpoint(app)
@@ -40,10 +47,11 @@ def main():
     
     port = int(os.getenv("FLASK_PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    mcp_endpoint = os.getenv("MCP_ENDPOINT", "/sse")
     
     print(f"\n🚀 Server starting on port {port}")
     print(f"   Debug mode: {debug}")
-    print(f"   MCP endpoint: /sse")
+    print(f"   MCP endpoint: {mcp_endpoint}")
     print(f"   Health check: /health")
     print("=" * 60)
     

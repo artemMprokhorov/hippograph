@@ -10,3 +10,6 @@ transformers>=4.30.0,<5.0.0
 # Entity extraction with spaCy
 spacy>=3.7.0,<4.0.0
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
+
+# ANN indexing for fast similarity search (O(log n) instead of O(n))
+faiss-cpu>=1.7.4,<2.0.0

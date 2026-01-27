@@ -12,10 +12,12 @@ from typing import List, Dict, Any
 from database import (
     create_node, get_node, get_all_nodes, touch_node,
     create_edge, get_connected_nodes,
-    get_or_create_entity, link_node_to_entity, get_nodes_by_entity
+    get_or_create_entity, link_node_to_entity, get_nodes_by_entity,
+    ENABLE_EMOTIONAL_MEMORY
 )
 from stable_embeddings import get_model
 from entity_extractor import extract_entities
+from ann_index import get_ann_index
 
 # Configuration from environment
 ACTIVATION_ITERATIONS = int(os.getenv("ACTIVATION_ITERATIONS", "3"))
@@ -129,7 +131,7 @@ def add_note_with_links(content, category="general", importance="normal", force=
     Add note with automatic entity extraction, linking, and emotional context.
     
     1. Check for duplicates (unless force=True)
-    2. Create embedding (includes emotional context if provided)
+    2. Create embedding (includes emotional context if ENABLE_EMOTIONAL_MEMORY=true)
     3. Extract entities (people, concepts, projects)
     4. Link to other notes sharing same entities
     5. Find semantically similar notes and create edges
@@ -139,9 +141,9 @@ def add_note_with_links(content, category="general", importance="normal", force=
     """
     model = get_model()
     
-    # Include emotional context in embedding if provided
+    # Include emotional context in embedding only if feature is enabled
     full_text = content
-    if emotional_tone or emotional_reflection:
+    if ENABLE_EMOTIONAL_MEMORY and (emotional_tone or emotional_reflection):
         emotional_context = []
         if emotional_tone:
             emotional_context.append(f"Emotional tone: {emotional_tone}")
@@ -253,17 +255,29 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     all_nodes = get_all_nodes()
     
     # Step 1: Initialize activation from semantic similarity
+    # Try ANN index first (O(log n)), fallback to linear scan (O(n))
+    ann_index = get_ann_index()
     activations = {}
-    for node in all_nodes:
-        if node["embedding"] is None:
-            continue
-        
-        node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
-        sim = cosine_similarity(query_emb, node_emb)
-        
-        # Only activate nodes with minimum similarity
-        if sim >= 0.3:
-            activations[node["id"]] = sim
+    
+    if ann_index.enabled and len(ann_index.node_ids) > 0:
+        # Fast ANN search
+        results = ann_index.search(query_emb, k=limit*3, min_similarity=0.3)
+        for node_id, sim in results:
+            activations[node_id] = sim
+        print(f"🚀 ANN search: {len(activations)} initial candidates")
+    else:
+        # Fallback: linear scan through all nodes
+        for node in all_nodes:
+            if node["embedding"] is None:
+                continue
+            
+            node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
+            sim = cosine_similarity(query_emb, node_emb)
+            
+            # Only activate nodes with minimum similarity
+            if sim >= 0.3:
+                activations[node["id"]] = sim
+        print(f"⚠️  Linear search: {len(activations)} initial candidates")
     
     # Step 2: Spreading activation
     for _ in range(iterations):
