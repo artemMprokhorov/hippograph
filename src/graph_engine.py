@@ -12,12 +12,11 @@ from typing import List, Dict, Any
 from database import (
     create_node, get_node, get_all_nodes, touch_node,
     create_edge, get_connected_nodes,
-    get_or_create_entity, link_node_to_entity, get_nodes_by_entity,
-    ENABLE_EMOTIONAL_MEMORY
+    get_or_create_entity, link_node_to_entity, get_nodes_by_entity
 )
 from stable_embeddings import get_model
 from entity_extractor import extract_entities
-from ann_index import get_ann_index
+from ann_index import get_ann_index, rebuild_index
 
 # Configuration from environment
 ACTIVATION_ITERATIONS = int(os.getenv("ACTIVATION_ITERATIONS", "3"))
@@ -131,7 +130,7 @@ def add_note_with_links(content, category="general", importance="normal", force=
     Add note with automatic entity extraction, linking, and emotional context.
     
     1. Check for duplicates (unless force=True)
-    2. Create embedding (includes emotional context if ENABLE_EMOTIONAL_MEMORY=true)
+    2. Create embedding (includes emotional context if provided)
     3. Extract entities (people, concepts, projects)
     4. Link to other notes sharing same entities
     5. Find semantically similar notes and create edges
@@ -141,9 +140,9 @@ def add_note_with_links(content, category="general", importance="normal", force=
     """
     model = get_model()
     
-    # Include emotional context in embedding only if feature is enabled
+    # Include emotional context in embedding if provided
     full_text = content
-    if ENABLE_EMOTIONAL_MEMORY and (emotional_tone or emotional_reflection):
+    if emotional_tone or emotional_reflection:
         emotional_context = []
         if emotional_tone:
             emotional_context.append(f"Emotional tone: {emotional_tone}")
@@ -261,7 +260,7 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     
     if ann_index.enabled and len(ann_index.node_ids) > 0:
         # Fast ANN search
-        results = ann_index.search(query_emb, k=limit*3, min_similarity=0.3)
+        results = ann_index.search(query_emb, k=limit*3, min_similarity=0.0)
         for node_id, sim in results:
             activations[node_id] = sim
         print(f"🚀 ANN search: {len(activations)} initial candidates")
@@ -270,23 +269,25 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         for node in all_nodes:
             if node["embedding"] is None:
                 continue
-            
             node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
             sim = cosine_similarity(query_emb, node_emb)
-            
-            # Only activate nodes with minimum similarity
             if sim >= 0.3:
                 activations[node["id"]] = sim
-        print(f"⚠️  Linear search: {len(activations)} initial candidates")
+        print(f"⚠️  Linear search: {len(activations)} initial candidates (ANN disabled)")
     
-    # Step 2: Spreading activation
-    for _ in range(iterations):
-        new_activations = activations.copy()
+    # Step 2: Spreading activation with normalization and damping
+    for iteration in range(iterations):
+        new_activations = {}
         
+        # Spread from activated nodes
         for node_id, activation in activations.items():
-            if activation < 0.1:  # Skip weakly activated nodes
+            if activation < 0.01:  # Skip very weakly activated nodes
                 continue
             
+            # Keep original activation (with decay)
+            new_activations[node_id] = new_activations.get(node_id, 0) + activation * decay
+            
+            # Spread to neighbors
             connected = get_connected_nodes(node_id)
             for neighbor in connected:
                 neighbor_id = neighbor["id"]
@@ -295,16 +296,21 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                 # Spread activation through edge
                 spread = activation * edge_weight * decay
                 
-                if neighbor_id in new_activations:
-                    # Combine with existing activation (not replace)
-                    new_activations[neighbor_id] = max(
-                        new_activations[neighbor_id],
-                        new_activations[neighbor_id] + spread * 0.5
-                    )
-                else:
-                    new_activations[neighbor_id] = spread
+                # Add to neighbor's activation
+                new_activations[neighbor_id] = new_activations.get(neighbor_id, 0) + spread
+        
+        # Normalization: scale to 0-1 range based on max
+        if new_activations:
+            max_activation = max(new_activations.values())
+            if max_activation > 0:
+                for node_id in new_activations:
+                    new_activations[node_id] /= max_activation
         
         activations = new_activations
+        
+        # Debug output
+        if activations:
+            print(f"  Iteration {iteration+1}: {len(activations)} nodes, max={max(activations.values()):.4f}, sum={sum(activations.values()):.4f}")
 
     
     # Step 3: Apply temporal decay and importance scoring
