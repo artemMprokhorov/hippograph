@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import init_database
 from mcp_sse_handler import create_mcp_endpoint
 from ann_index import rebuild_index
-from database import get_all_nodes
+from database import get_all_nodes, get_all_edges
+from graph_cache import rebuild_graph_cache
 
 
 def create_app():
@@ -30,6 +31,11 @@ def create_app():
     nodes = get_all_nodes()
     vector_count = rebuild_index(nodes)
     print(f"📊 Built ANN index with {vector_count} vectors")
+    
+    # Build graph cache for fast edge traversal
+    edges = get_all_edges()
+    edge_count = rebuild_graph_cache(edges)
+    print(f"🔗 Built graph cache with {edge_count} edges")
     
     # Register MCP endpoint
     create_mcp_endpoint(app)

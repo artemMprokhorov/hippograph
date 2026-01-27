@@ -10,6 +10,7 @@ from datetime import datetime
 from contextlib import contextmanager
 
 DB_PATH = os.getenv("DB_PATH", "/app/data/memory.db")
+ENABLE_EMOTIONAL_MEMORY = os.getenv("ENABLE_EMOTIONAL_MEMORY", "false").lower() == "true"
 
 
 @contextmanager
@@ -107,9 +108,16 @@ def create_node(content, category="general", embedding=None, importance="normal"
                 emotional_tone=None, emotional_intensity=5, emotional_reflection=None):
     """Create a new node (note). 
     Importance: 'critical', 'normal', or 'low'
-    Emotional fields: tone (keywords), intensity (0-10), reflection (narrative)
+    Emotional fields: tone (keywords), intensity (0-10), reflection (narrative) - only if ENABLE_EMOTIONAL_MEMORY=true
     """
     timestamp = datetime.now().isoformat()
+    
+    # Apply emotional fields only if feature is enabled
+    if not ENABLE_EMOTIONAL_MEMORY:
+        emotional_tone = None
+        emotional_intensity = 5
+        emotional_reflection = None
+    
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
@@ -133,7 +141,14 @@ def get_node(node_id):
 
 def update_node(node_id, content=None, category=None, embedding=None, importance=None,
                 emotional_tone=None, emotional_intensity=None, emotional_reflection=None):
-    """Update existing node"""
+    """Update existing node. Emotional fields only if ENABLE_EMOTIONAL_MEMORY=true"""
+    
+    # Ignore emotional fields if feature is disabled
+    if not ENABLE_EMOTIONAL_MEMORY:
+        emotional_tone = None
+        emotional_intensity = None
+        emotional_reflection = None
+    
     with get_connection() as conn:
         cursor = conn.cursor()
         
@@ -310,3 +325,14 @@ def get_stats():
             "nodes_by_category": by_category,
             "edges_by_type": by_edge_type
         }
+
+
+def get_all_edges():
+    """Get all edges from database for graph cache"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT source_id, target_id, weight, edge_type
+               FROM edges"""
+        )
+        return [dict(row) for row in cursor.fetchall()]

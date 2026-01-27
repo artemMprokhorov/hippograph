@@ -16,7 +16,8 @@ from database import (
 )
 from stable_embeddings import get_model
 from entity_extractor import extract_entities
-from ann_index import get_ann_index, rebuild_index
+from ann_index import get_ann_index
+from graph_cache import get_graph_cache, rebuild_index
 
 # Configuration from environment
 ACTIVATION_ITERATIONS = int(os.getenv("ACTIVATION_ITERATIONS", "3"))
@@ -288,10 +289,10 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             new_activations[node_id] = new_activations.get(node_id, 0) + activation * decay
             
             # Spread to neighbors
-            connected = get_connected_nodes(node_id)
-            for neighbor in connected:
-                neighbor_id = neighbor["id"]
-                edge_weight = neighbor.get("weight", 0.5)
+            # Use in-memory graph cache (O(1) instead of SQL)
+            graph_cache = get_graph_cache()
+            neighbors = graph_cache.get_neighbors(node_id)
+            for neighbor_id, edge_weight, edge_type in neighbors:
                 
                 # Spread activation through edge
                 spread = activation * edge_weight * decay
