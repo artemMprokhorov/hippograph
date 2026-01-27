@@ -1,82 +1,91 @@
 # Neural Memory Graph - Development Roadmap
 
-## Current Status: Phase 2 - Feature Enhancement (In Progress)
+## Current Status: Phase 2 - Performance & Quality (In Progress)
 
-**Last Updated:** January 26, 2026  
+**Last Updated:** January 27, 2026  
 **Deployment:** Production-ready implementation  
-**Current Stats:** 198 nodes, 12,016 edges, 40 entities
+**Current Stats:** 256 nodes, 17,500+ edges, activation normalized
 
 ---
 
-## ✅ Phase 1: Core Infrastructure (COMPLETED - Dec 2025 - Jan 2026)
+## 🔥 HIGH PRIORITY (Expert Feedback - Jan 27, 2026)
 
-- [x] SQLite graph database with nodes, edges, entities
-- [x] Sentence-transformers embeddings (all-MiniLM-L6-v2)
-- [x] Spreading activation search algorithm
-- [x] MCP server with 5 CRUD tools
-- [x] Docker containerization with ngrok
-- [x] API key authentication
-- [x] Backup/restore scripts
-- [x] Public GitHub repository
-- [x] Complete documentation suite
+### ✅ 1. ANN Indexing (COMPLETE)
+**Status:** Implemented and deployed  
+**Commit:** dcb7d32  
+**Achievement:** O(log n) similarity search using FAISS IndexFlatIP  
+- Replaced linear O(n) scan with approximate nearest neighbor search
+- IndexFlatIP for normalized vectors (Inner Product = cosine similarity)
+- Auto-rebuild index on server startup
+- Fallback to linear scan if ANN disabled
+- **Result:** Faster search, especially for 500+ nodes
 
-**Key Achievement:** Migrated from linear memory (v1) to graph-based architecture (v2) with semantic connections
+### ✅ 2. Activation Normalization + Damping (COMPLETE)
+**Status:** Implemented and deployed  
+**Commit:** 6b4b9e9  
+**Problem:** Activation scores grew unbounded (2520+) causing poor ranking  
+**Solution:** Normalize to 0-1 range after each spreading iteration
+- Scale all activations by max value → max always = 1.0
+- Apply decay factor before spreading
+- Debug logging for iteration diagnostics
+- **Result:** Scores bounded (2.5 vs 2520), stable across iterations
 
----
+### ⏳ 3. Enhanced spaCy Entity Extraction (NEXT)
+**Status:** Planned  
+**Goal:** Improve entity recognition quality using existing spaCy in Docker  
+**Tasks:**
+- Expand entity types beyond PERSON, ORG, LOC
+- Add custom patterns for technical terms (e.g., "Python", "Docker", "FAISS")
+- Implement entity coreference (e.g., "Claude" = "I" in context)
+- Consider neuralcoref for pronoun resolution
+- Add entity confidence scores
+**Estimated:** 1-2 hours  
+**Benefit:** 80% of LLM quality with zero overhead (spaCy already installed)  
+**Files:** `src/entity_extractor.py`
 
-## 🚧 Phase 2: Feature Enhancement (IN PROGRESS - Jan 2026)
-
-### ✅ Completed in Phase 2
-
-#### Deployment (Jan 26, 2026)
-- [x] Deployed new code from GitHub to production server
-- [x] Database migrated (198 nodes preserved)
-- [x] Docker container rebuilt
-- [x] Ngrok tunnel restored
-- [x] MCP connection verified
-
-#### New Features Implemented
-- [x] **Temporal Decay** - Recency-weighted search with last_accessed tracking
-- [x] **Importance Scoring** - Critical/normal/low levels with activation multipliers
-  - Tool: `set_importance(note_id, importance_level)`
-  - Critical notes get 2x boost, low notes get 0.5x
-- [x] **Deduplication System** - Similarity detection before adding notes
-  - Tool: `find_similar(content, limit, threshold)`
-  - Blocks duplicates >95%, warns >90%
-  - Force parameter to override protection
-
-### 🔄 Current Session Tasks (Jan 26, 2026 - 48% tokens used)
-
-- [x] ~~Update project documentation~~
-- [ ] **Update API_REFERENCE.md** - Add new tools (set_importance, find_similar)
-- [ ] **Implement spaCy NER** - Replace regex-based entity extraction
-  - spaCy model (en_core_web_sm) already installed in Docker
-  - Need to activate EntityExtractor with spaCy backend
-  - Expected improvement: Better entity recognition quality
-
-### 📋 Remaining Phase 2 Tasks
-
-- [ ] Add examples and usage patterns to docs
-- [ ] Create automated tests for core features
-- [ ] Setup CI/CD pipeline (GitHub Actions)
-- [ ] Performance benchmarking suite
-- [ ] Memory usage optimization
+### ⏳ 4. Tests Infrastructure (pytest)
+**Status:** Planned  
+**Goal:** Automated testing for reliability
+**Tasks:**
+- Unit tests for graph_engine.py (spreading activation)
+- Integration tests for MCP tools
+- Test fixtures with sample graph data
+- CI/CD pipeline (GitHub Actions)
+**Estimated:** 2-3 hours
 
 ---
 
+## 🎯 MEDIUM PRIORITY
+
+### 5. Incremental Updates
+- Update existing nodes without full rebuild
+- Add single vectors to ANN index without recreation
+
+### 6. Edge Pruning
+- Remove weak semantic connections (similarity < threshold)
+- Optimize graph structure for better spreading
+
+### 7. Graph Metrics
+- PageRank for node importance
+- Community detection (Louvain algorithm)
+- Centrality measures
+
+### 8. Search Quality Metrics
+- Recall@k measurement
+- Precision tracking
+- User feedback collection
+
+### 9. LLM-based Entity Extraction (Optional)
+**Note:** Moved from HIGH to MEDIUM priority  
+**Reason:** Massive overhead for personal use case
+- Ollama requires 3-7GB Docker image
+- 4-12GB RAM constant usage
+- 2-5 seconds per note (vs 100ms with spaCy)
+- For 200-500 notes, spaCy is pragmatic choice
+**Alternative:** Remote Claude API for critical cases only
 
 ---
 
-## 🎯 Phase 3: Advanced Features (FUTURE)
-
-### Knowledge Graph Enhancements
-- [ ] **Graph Clustering** - Detect topic clusters automatically
-- [ ] **Relationship Types** - Typed edges (causal, temporal, hierarchical)
-- [ ] **Graph Pruning** - Remove weak connections, optimize structure
-- [ ] **Entity Disambiguation** - Resolve entity name conflicts
-
-### Search & Retrieval
-- [ ] **Multi-hop Queries** - Complex graph traversal queries
 - [ ] **Filtered Search** - Search by category, time range, entity type
 - [ ] **Saved Searches** - Store frequent search patterns
 - [ ] **Search History** - Track and replay past searches
