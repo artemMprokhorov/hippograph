@@ -17,7 +17,7 @@ from database import (
 from stable_embeddings import get_model
 from entity_extractor import extract_entities
 from ann_index import get_ann_index
-from graph_cache import get_graph_cache, rebuild_index
+from graph_cache import get_graph_cache
 
 # Configuration from environment
 ACTIVATION_ITERATIONS = int(os.getenv("ACTIVATION_ITERATIONS", "3"))
