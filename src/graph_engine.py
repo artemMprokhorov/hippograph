@@ -175,6 +175,12 @@ def add_note_with_links(content, category="general", importance="normal", force=
     node_id = create_node(content, category, embedding.tobytes(), importance,
                          emotional_tone, emotional_intensity, emotional_reflection)
     
+    # Add to ANN index incrementally (NEW: enables immediate search)
+    from ann_index import get_ann_index
+    ann_index = get_ann_index()
+    if ann_index.enabled:
+        ann_index.add_vector(node_id, embedding)
+    
     # Extract entities and create entity-based links
     entities = extract_entities(content)
     entity_links = []
