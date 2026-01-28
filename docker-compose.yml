@@ -14,6 +14,7 @@ services:
       # Emotional memory (optional, disabled by default)
       - ENABLE_EMOTIONAL_MEMORY=false
       - NEURAL_API_KEY=${NEURAL_API_KEY:-change_me_in_production}
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
       # Spreading Activation settings
       - ACTIVATION_ITERATIONS=3
       - ACTIVATION_DECAY=0.7
