@@ -132,7 +132,7 @@
 
 ### Search Enhancement
 - [x] **Filtered Search** - Search by category ✅ (Feb 3, 2026 - commit e8168ba)
-- [ ] **Time Range Filter** - Filter by date/time range
+- [x] **Time Range Filter** - Filter by date/time range ✅ (Feb 3, 2026 - commit 0645fd2)
 - [ ] **Entity Type Filter** - Filter by entity type
 - [ ] **Saved Searches** - Store frequent search patterns
 - [ ] **Search History** - Track and replay past searches
