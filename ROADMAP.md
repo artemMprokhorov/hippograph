@@ -61,15 +61,41 @@
 **Result:** Spreading activation fully in-memory, SQLite only for cold storage
 **Files:** `src/graph_cache.py`, `src/database.py`, `src/graph_engine.py`, `src/server.py`
 
-### ⏳ 5. Tests Infrastructure (pytest)
-**Status:** Moved from #4, now lower priority  
-**Goal:** Automated testing for reliability
-**Tasks:**
-- Unit tests for graph_engine.py (spreading activation)
-- Integration tests for MCP tools
+### ✅ 5. Tests Infrastructure (pytest) (COMPLETE)
+**Status:** Implemented and deployed  
+**Commit:** Various commits in Jan 28, 2026  
+**Achievement:** Comprehensive test suite with 17 tests
+- Unit tests for graph_engine.py (spreading activation, ANN, graph cache)
+- Integration tests for MCP tools (search, CRUD, performance)
 - Test fixtures with sample graph data
-- CI/CD pipeline (GitHub Actions)
-**Estimated:** 2-3 hours
+- pytest configuration with markers (unit, integration, slow)
+- **Result:** All 17 tests passing, test coverage for core functionality
+**Files:** `tests/test_graph_engine.py`, `tests/test_integration.py`
+
+### ✅ 6. Semantic Links Bug Fix (COMPLETE - Feb 3, 2026)
+**Status:** Critical bug discovered and fixed  
+**Commit:** d4f0b90  
+**Problem:** New notes weren't getting semantic links after note #201
+- add_note_with_links() used O(n) linear scan for both duplicate check and semantic link creation
+- On 325+ notes, this became too slow
+- New notes got entity links but ZERO semantic links
+**Solution:** Replace linear scan with ANN index search
+- Duplicate check: ann_index.search(k=5, min_similarity=DUPLICATE_THRESHOLD)
+- Semantic links: ann_index.search(k=MAX_SEMANTIC_LINKS*2, min_similarity=SIMILARITY_THRESHOLD)
+- Fallback to linear scan if ANN disabled
+**Result:** O(log n) performance, new notes now get semantic links automatically
+**Files:** `src/graph_engine.py`
+
+### ✅ 7. Filtered Search by Category (COMPLETE - Feb 3, 2026)
+**Status:** Implemented and deployed  
+**Commit:** e8168ba  
+**Achievement:** Add category filtering to search_memory tool
+- Added category_filter parameter to search_with_activation()
+- Filter applied after spreading activation but before limit
+- MCP tool updated with category parameter
+- Example: search_memory(query="bug fix", category="breakthrough")
+**Result:** Can now search within specific categories
+**Files:** `src/graph_engine.py`, `src/mcp_sse_handler.py`
 
 ---
 
@@ -104,7 +130,10 @@
 
 ---
 
-- [ ] **Filtered Search** - Search by category, time range, entity type
+### Search Enhancement
+- [x] **Filtered Search** - Search by category ✅ (Feb 3, 2026 - commit e8168ba)
+- [ ] **Time Range Filter** - Filter by date/time range
+- [ ] **Entity Type Filter** - Filter by entity type
 - [ ] **Saved Searches** - Store frequent search patterns
 - [ ] **Search History** - Track and replay past searches
 
