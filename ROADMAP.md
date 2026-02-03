@@ -164,6 +164,100 @@
 
 ---
 
+## 🔒 Security & Access Control
+
+### Network Access Levels (Implementation Required)
+
+**Current State:** Server runs on `0.0.0.0:5001` with ngrok tunnel - publicly accessible with API key protection only.
+
+**Proposed Implementation:** Three security tiers with explicit user choice:
+
+#### TIER 1: LOCALHOST ONLY (Default - Recommended)
+```python
+SERVER_HOST=127.0.0.1
+ENABLE_NGROK=false
+```
+**Security:**
+- ✅ Accessible only from local machine
+- ✅ No network exposure
+- ✅ Maximum security for personal use
+- ✅ No API key leakage risk
+
+**Limitations:**
+- ❌ Cannot access from other devices
+- ❌ No MCP integration with claude.ai (requires public access)
+
+**Use Case:** Personal knowledge management on single machine
+
+---
+
+#### TIER 2: LOCAL NETWORK (Optional - Use with Caution)
+```python
+SERVER_HOST=0.0.0.0  # Listen on all interfaces
+ENABLE_NGROK=false
+```
+**Security:**
+- ⚠️  Accessible to any device on your LAN
+- ⚠️  Anyone on your WiFi can access your memory graph
+- ✅ Not exposed to internet
+- ⚠️  API key required but can be sniffed on local network
+
+**Limitations:**
+- ❌ No MCP integration with claude.ai
+- ⚠️  Trust required for all LAN users
+
+**Use Case:** Multi-device access on trusted home network
+
+---
+
+#### TIER 3: PUBLIC ACCESS (Optional - High Risk)
+```python
+SERVER_HOST=0.0.0.0
+ENABLE_NGROK=true
+NGROK_AUTHTOKEN=your_token
+API_KEY=strong_random_key  # REQUIRED
+```
+**Security:**
+- ⚠️  Publicly accessible from internet
+- ⚠️  API key is only protection
+- ⚠️  Memory contents exposed if key compromised
+- ⚠️  ngrok URL can be shared/leaked
+- ⚠️  Rate limiting recommended
+
+**Limitations:**
+- ⚠️  Requires trust in ngrok service
+- ⚠️  Potential for unauthorized access
+- ⚠️  Data transmitted over internet
+
+**Use Case:** MCP integration with claude.ai, remote access
+
+**REQUIRED Security Measures:**
+1. Strong random API key (32+ characters)
+2. HTTPS only (ngrok provides this)
+3. Rate limiting on endpoints
+4. Audit logs for access attempts
+5. Regular key rotation
+
+---
+
+### Implementation Tasks
+
+- [ ] **Default to localhost** - Change default SERVER_HOST to 127.0.0.1
+- [ ] **Security warnings in .env.example** - Document risks for each tier
+- [ ] **README security section** - Clear warnings about network/public access
+- [ ] **Startup warnings** - Print security tier to console on server start
+- [ ] **Configuration validation** - Reject public access without strong API key
+
+### Documentation Requirements
+
+Each tier must have:
+1. Clear security implications
+2. Specific use cases
+3. Required precautions
+4. Migration path between tiers
+
+**Philosophy:** Secure by default, explicit opt-in for exposure, informed user choice.
+
 ## 🏢 Phase 4: Enterprise Features (FUTURE - For Production Use)
 
 *Note: Current implementation is optimized for personal use (~200-1000 notes). The following features would be required for enterprise deployment at scale.*
