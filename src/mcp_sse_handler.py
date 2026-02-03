@@ -64,7 +64,9 @@ def get_tools_list():
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
                     "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
-                    "category": {"type": "string", "description": "Optional: filter results by category (e.g., 'breakthrough', 'technical', 'self-identity')"}
+                    "category": {"type": "string", "description": "Optional: filter results by category (e.g., 'breakthrough', 'technical')"},
+                    "time_after": {"type": "string", "description": "Optional: only return notes created after this datetime (ISO format: '2026-01-01T00:00:00')"},
+                    "time_before": {"type": "string", "description": "Optional: only return notes created before this datetime (ISO format: '2026-02-01T00:00:00')"}
                 },
                 "required": ["query"]
             }
@@ -159,7 +161,9 @@ def handle_tool_call(params):
         return tool_search_memory(
             args.get("query", ""), 
             args.get("limit", 5),
-            args.get("category", None)
+            args.get("category", None),
+            args.get("time_after", None),
+            args.get("time_before", None)
         )
     elif tool_name == "add_note":
         return tool_add_note(
@@ -184,20 +188,44 @@ def handle_tool_call(params):
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
 
-def tool_search_memory(query: str, limit: int, category: str = None):
-    """Search with spreading activation and optional category filter"""
-    results = search_with_activation(query, limit, category_filter=category)
+def tool_search_memory(query: str, limit: int, category: str = None, 
+                      time_after: str = None, time_before: str = None):
+    """Search with spreading activation and optional filters (category, time range)"""
+    results = search_with_activation(query, limit, 
+                                     category_filter=category,
+                                     time_after=time_after, 
+                                     time_before=time_before)
     
     if not results:
+        filters = []
         if category:
-            text = f"No results found for: {query} (category: {category})"
+            filters.append(f"category: {category}")
+        if time_after:
+            filters.append(f"after: {time_after[:10]}")
+        if time_before:
+            filters.append(f"before: {time_before[:10]}")
+        
+        if filters:
+            text = f"No results found for: {query} ({', '.join(filters)})"
         else:
             text = f"No results found for: {query}"
     else:
+        filters_desc = []
         if category:
-            text = f"Found {len(results)} notes in category '{category}':\n\n"
+            filters_desc.append(f"category '{category}'")
+        if time_after or time_before:
+            if time_after and time_before:
+                filters_desc.append(f"{time_after[:10]} to {time_before[:10]}")
+            elif time_after:
+                filters_desc.append(f"after {time_after[:10]}")
+            elif time_before:
+                filters_desc.append(f"before {time_before[:10]}")
+        
+        if filters_desc:
+            text = f"Found {len(results)} notes ({', '.join(filters_desc)}):\n\n"
         else:
             text = f"Found {len(results)} notes:\n\n"
+            
         for r in results:
             text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
             text += f"{r['content']}\n\n"

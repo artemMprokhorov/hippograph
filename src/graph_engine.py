@@ -232,7 +232,8 @@ def add_note_with_links(content, category="general", importance="normal", force=
     return result
 
 
-def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, category_filter=None):
+def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, 
+                          category_filter=None, time_after=None, time_before=None):
     """
     Search using spreading activation algorithm.
     
@@ -247,12 +248,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         iterations: Spreading activation iterations  
         decay: Activation decay factor
         category_filter: Optional category to filter results (e.g., "breakthrough", "technical")
+        time_after: Optional datetime string - only return notes created after this time (ISO format)
+        time_before: Optional datetime string - only return notes created before this time (ISO format)
     
     This finds notes that are:
     - Semantically similar to query
     - Connected to similar notes through shared entities
     - Recently accessed (recency boost)
-    - Optionally filtered by category
+    - Optionally filtered by category and/or time range
     """
     model = get_model()
     query_emb = model.encode(query)[0]
@@ -345,6 +348,15 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         # Filter by category if specified
         if category_filter and node.get("category") != category_filter:
             continue
+        
+        # Filter by time range if specified
+        if time_after or time_before:
+            node_timestamp = node.get("timestamp")
+            if node_timestamp:
+                if time_after and node_timestamp < time_after:
+                    continue
+                if time_before and node_timestamp > time_before:
+                    continue
             
         # Update access tracking
         touch_node(node_id)
