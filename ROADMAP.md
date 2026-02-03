@@ -168,6 +168,35 @@
 
 *Note: Current implementation is optimized for personal use (~200-1000 notes). The following features would be required for enterprise deployment at scale.*
 
+### ⚠️  Edge Pruning (Optional - Enterprise Only)
+**Status:** Implemented as optional script  
+**Commit:** TBD  
+**Why NOT recommended for personal use:**
+- Weak connections may become important as context grows
+- Distant memories are still valuable memories
+- Graph structure shows how ideas relate over time
+- Irreversible without backup
+
+**When to use (enterprise only):**
+- Very large databases (10k+ notes)
+- Performance issues from excessive edges
+- Regular backups in place
+- Acceptable to lose weak historical connections
+
+**Usage:**
+```bash
+# Analyze current edge distribution
+python3 scripts/prune_edges.py data/memory.db --analyze
+
+# Dry run (see what would be removed)
+python3 scripts/prune_edges.py data/memory.db --threshold 0.60
+
+# Actually remove (with backup!)
+python3 scripts/prune_edges.py data/memory.db --threshold 0.60 --confirm
+```
+
+**Files:** `scripts/prune_edges.py`
+
 ### Graph Analytics & Intelligence
 - [ ] **Centrality Analysis** - Identify key nodes using PageRank, betweenness centrality
 - [ ] **Community Detection** - Automatic clustering of related knowledge domains
