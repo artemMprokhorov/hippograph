@@ -233,7 +233,7 @@ def add_note_with_links(content, category="general", importance="normal", force=
 
 
 def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, 
-                          category_filter=None, time_after=None, time_before=None):
+                          category_filter=None, time_after=None, time_before=None, entity_type_filter=None):
     """
     Search using spreading activation algorithm.
     
@@ -250,12 +250,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         category_filter: Optional category to filter results (e.g., "breakthrough", "technical")
         time_after: Optional datetime string - only return notes created after this time (ISO format)
         time_before: Optional datetime string - only return notes created before this time (ISO format)
+        entity_type_filter: Optional entity type - only return notes containing entities of this type
+                           (e.g., "person", "organization", "concept", "location")
     
     This finds notes that are:
     - Semantically similar to query
     - Connected to similar notes through shared entities
     - Recently accessed (recency boost)
-    - Optionally filtered by category and/or time range
+    - Optionally filtered by category, time range, and/or entity type
     """
     model = get_model()
     query_emb = model.encode(query)[0]
@@ -357,6 +359,21 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                     continue
                 if time_before and node_timestamp > time_before:
                     continue
+        
+        # Filter by entity type if specified
+        if entity_type_filter:
+            # Check if node has any entities of the specified type
+            conn = get_db()
+            has_entity_type = conn.execute("""
+                SELECT 1 FROM node_entities ne
+                JOIN entities e ON ne.entity_id = e.id
+                WHERE ne.node_id = ? AND e.entity_type = ?
+                LIMIT 1
+            """, (node_id, entity_type_filter)).fetchone()
+            conn.close()
+            
+            if not has_entity_type:
+                continue
             
         # Update access tracking
         touch_node(node_id)

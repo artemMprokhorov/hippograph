@@ -66,7 +66,8 @@ def get_tools_list():
                     "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
                     "category": {"type": "string", "description": "Optional: filter results by category (e.g., 'breakthrough', 'technical')"},
                     "time_after": {"type": "string", "description": "Optional: only return notes created after this datetime (ISO format: '2026-01-01T00:00:00')"},
-                    "time_before": {"type": "string", "description": "Optional: only return notes created before this datetime (ISO format: '2026-02-01T00:00:00')"}
+                    "time_before": {"type": "string", "description": "Optional: only return notes created before this datetime (ISO format: '2026-02-01T00:00:00')"},
+                    "entity_type": {"type": "string", "description": "Optional: only return notes containing entities of this type (e.g., 'person', 'organization', 'concept', 'location', 'tech')"}
                 },
                 "required": ["query"]
             }
@@ -163,7 +164,8 @@ def handle_tool_call(params):
             args.get("limit", 5),
             args.get("category", None),
             args.get("time_after", None),
-            args.get("time_before", None)
+            args.get("time_before", None),
+            args.get("entity_type", None)
         )
     elif tool_name == "add_note":
         return tool_add_note(
@@ -189,12 +191,13 @@ def handle_tool_call(params):
 
 
 def tool_search_memory(query: str, limit: int, category: str = None, 
-                      time_after: str = None, time_before: str = None):
-    """Search with spreading activation and optional filters (category, time range)"""
+                      time_after: str = None, time_before: str = None, entity_type: str = None):
+    """Search with spreading activation and optional filters (category, time range, entity type)"""
     results = search_with_activation(query, limit, 
                                      category_filter=category,
                                      time_after=time_after, 
-                                     time_before=time_before)
+                                     time_before=time_before,
+                                     entity_type_filter=entity_type)
     
     if not results:
         filters = []
@@ -204,6 +207,8 @@ def tool_search_memory(query: str, limit: int, category: str = None,
             filters.append(f"after: {time_after[:10]}")
         if time_before:
             filters.append(f"before: {time_before[:10]}")
+        if entity_type:
+            filters.append(f"entity_type: {entity_type}")
         
         if filters:
             text = f"No results found for: {query} ({', '.join(filters)})"
@@ -220,6 +225,8 @@ def tool_search_memory(query: str, limit: int, category: str = None,
                 filters_desc.append(f"after {time_after[:10]}")
             elif time_before:
                 filters_desc.append(f"before {time_before[:10]}")
+        if entity_type:
+            filters_desc.append(f"entity_type '{entity_type}'")
         
         if filters_desc:
             text = f"Found {len(results)} notes ({', '.join(filters_desc)}):\n\n"
