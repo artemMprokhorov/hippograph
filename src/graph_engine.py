@@ -153,79 +153,70 @@ def add_note_with_links(content, category="general", importance="normal", force=
     
     embedding = model.encode(full_text)[0]
     
+    # Get ANN index once (used for both duplicate check and semantic links)
+    ann_index = get_ann_index()
+    
     # Check for duplicates unless forced
+    # OPTIMIZED: Use ANN index for O(log n) instead of O(n) linear scan
     if not force:
-        all_nodes = get_all_nodes()
-        for node in all_nodes:
-            if node["embedding"] is None:
-                continue
-            node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
-            sim = cosine_similarity(embedding, node_emb)
-            
-            if sim >= DUPLICATE_THRESHOLD:
-                return {
-                    "error": "duplicate",
-                    "message": f"Very similar note already exists (similarity: {sim:.2%})",
-                    "existing_id": node["id"],
-                    "existing_content": node["content"][:200],
-                    "similarity": round(sim, 4)
-                }
+        if ann_index.enabled:
+            # Fast duplicate check using ANN index
+            d = ann_index.search(embedding, k=5, min_similarity=DUPLICATE_THRESHOLD)
+            if d:
+                eid,sim = d[0]
+                en = get_node(eid)
+                if en: return {"error": "duplicate", "message": f"Similar note exists ({sim:.2%})", "existing_id": eid, "existing_content": en["content"][:200], "similarity": round(sim, 4)}
+        else:
+            # Fallback to linear scan if ANN not enabled
+            for n in get_all_nodes():
+                if n["embedding"] is None: continue
+                sim = cosine_similarity(embedding, np.frombuffer(n["embedding"], dtype=np.float32))
+                if sim >= DUPLICATE_THRESHOLD: return {"error": "duplicate", "message": f"Similar note exists ({sim:.2%})", "existing_id": n["id"], "existing_content": n["content"][:200], "similarity": round(sim, 4)}
     
     # Create the node with emotional context
-    node_id = create_node(content, category, embedding.tobytes(), importance,
-                         emotional_tone, emotional_intensity, emotional_reflection)
+    node_id = create_node(content, category, embedding.tobytes(), importance, emotional_tone, emotional_intensity, emotional_reflection)
     
-    # Add to ANN index incrementally (NEW: enables immediate search)
-    from ann_index import get_ann_index
-    ann_index = get_ann_index()
-    if ann_index.enabled:
-        ann_index.add_vector(node_id, embedding)
+    # Add to ANN index incrementally (enables immediate search for this note)
+    if ann_index.enabled: ann_index.add_vector(node_id, embedding)
     
     # Extract entities and create entity-based links
     entities = extract_entities(content)
     entity_links = []
     
-    for entity_name, entity_type in entities:
-        entity_id = get_or_create_entity(entity_name, entity_type)
-        link_node_to_entity(node_id, entity_id)
-        
-        # Find other nodes with the same entity
-        related_nodes = get_nodes_by_entity(entity_id)
-        for related in related_nodes:
-            if related["id"] != node_id:
-                # Create bidirectional edges
-                create_edge(node_id, related["id"], weight=0.6, edge_type="entity")
-                create_edge(related["id"], node_id, weight=0.6, edge_type="entity")
-                entity_links.append(related["id"])
+    for en,et in entities:
+        eid = get_or_create_entity(en, et)
+        link_node_to_entity(node_id, eid)
+        for r in get_nodes_by_entity(eid):
+            if r["id"] != node_id:
+                create_edge(node_id, r["id"], weight=0.6, edge_type="entity")
+                create_edge(r["id"], node_id, weight=0.6, edge_type="entity")
+                entity_links.append(r["id"])
     
     # Find semantically similar notes
-    all_nodes = get_all_nodes()
+    # OPTIMIZED: Use ANN index for O(log n) instead of O(n) linear scan
     semantic_links = []
-    
-    similarities = []
-    for node in all_nodes:
-        if node["id"] == node_id or node["embedding"] is None:
-            continue
-        
-        node_emb = np.frombuffer(node["embedding"], dtype=np.float32)
-        sim = cosine_similarity(embedding, node_emb)
-        
-        if sim >= SIMILARITY_THRESHOLD:
-            similarities.append((node["id"], sim))
-    
-    # Create edges for top similar nodes
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    
-    # Collect warnings about very similar notes (but below duplicate threshold)
     similar_warnings = []
-    for related_id, sim in similarities[:MAX_SEMANTIC_LINKS]:
-        create_edge(node_id, related_id, weight=sim, edge_type="semantic")
-        create_edge(related_id, node_id, weight=sim, edge_type="semantic")
-        semantic_links.append((related_id, sim))
-        
-        # Warn about notes that are similar but not duplicates
-        if sim >= SIMILAR_THRESHOLD:
-            similar_warnings.append({"id": related_id, "similarity": round(sim, 4)})
+    
+    if ann_index.enabled:
+        # Fast semantic search using ANN index
+        # Request 2x candidates to account for self-reference filtering
+        sims = [(n,s) for n,s in ann_index.search(embedding, k=MAX_SEMANTIC_LINKS*2, min_similarity=SIMILARITY_THRESHOLD) if n!=node_id]
+    else:
+        # Fallback to linear scan if ANN not enabled
+        sims = []
+        for n in get_all_nodes():
+            if n["id"]==node_id or n["embedding"] is None: continue
+            sim = cosine_similarity(embedding, np.frombuffer(n["embedding"], dtype=np.float32))
+            if sim >= SIMILARITY_THRESHOLD: sims.append((n["id"], sim))
+        sims.sort(key=lambda x: x[1], reverse=True)
+    
+    # Create edges for top MAX_SEMANTIC_LINKS similar nodes
+    for rid,sim in sims[:MAX_SEMANTIC_LINKS]:
+        create_edge(node_id, rid, weight=sim, edge_type="semantic")
+        create_edge(rid, node_id, weight=sim, edge_type="semantic")
+        semantic_links.append((rid, sim))
+        if sim >= SIMILAR_THRESHOLD: similar_warnings.append({"id": rid, "similarity": round(sim, 4)})
+
     
     result = {
         "node_id": node_id,
