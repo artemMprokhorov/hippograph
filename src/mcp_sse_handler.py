@@ -386,6 +386,7 @@ def create_mcp_endpoint(app):
     """Register MCP SSE endpoint with Flask app"""
     
     @app.route("/sse", methods=["POST", "GET"])
+    @app.route("/sse2", methods=["POST", "GET"])
     def mcp_sse():
         if not verify_auth(request):
             return jsonify({"error": "Unauthorized"}), 401

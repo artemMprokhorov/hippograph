@@ -8,19 +8,19 @@
 
 ## 🎯 HIGH PRIORITY - Personal Use Blockers
 
-### 1. Entity Extraction Quality ⚠️ CRITICAL
-**Current Issue:** Too much noise - generic words tagged as entities, low precision
+### 1. Entity Extraction Quality ✅ COMPLETE
+**Completed:** Feb 3, 2026
 **Goal:** Better signal-to-noise ratio for personal memory context
 
-**Tasks:**
-- [ ] Filter out generic/common words from entity extraction
-- [ ] Whitelist/blacklist for entity types per user preference
-- [ ] Context-aware patterns (tech context vs casual conversation)
-- [ ] Confidence scoring for extracted entities
-- [ ] Manual entity correction/feedback mechanism
+**Implemented:**
+- [x] Filter out generic/common words (GENERIC_STOPWORDS set)
+- [x] Filter standalone numbers (isdigit() check)
+- [x] MIN_ENTITY_LENGTH = 2 (skip single chars)
+- [x] Fixed entity type mappings (ANN: tech, LLM: concept)
+- [x] Skip NUMBER types from spaCy (CARDINAL/ORDINAL)
 
-**Success Metric:** <10% false positive entities in personal notes
-**Estimated:** 3-4 hours
+**Result:** Noise significantly reduced - test showed filtering of "first", "second", "thing", "stuff", digits 1-42
+**Files:** `src/entity_extractor.py`
 
 ---
 

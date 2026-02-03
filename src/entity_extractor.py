@@ -1,13 +1,30 @@
 #!/usr/bin/env python3
 """
 Enhanced Entity Extractor for Neural Memory Graph
-Supports regex and spaCy backends with confidence scores
+Supports regex and spaCy backends with confidence scores and noise filtering
 """
 import re
 import os
 from typing import List, Tuple, Dict
 
 EXTRACTOR_TYPE = os.getenv("ENTITY_EXTRACTOR", "regex")
+
+# Entity filtering configuration
+MIN_ENTITY_LENGTH = 2  # Skip single-character entities
+
+# Generic stopwords to filter out (too common/meaningless)
+GENERIC_STOPWORDS = {
+    # Ordinals and sequence words
+    "first", "second", "third", "fourth", "fifth", "last", "next", "previous",
+    # Number words
+    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    # Generic nouns
+    "thing", "stuff", "issue", "problem", "solution", "way", "time", "day",
+    # Temporal generics (dates are OK, these aren't)
+    "today", "yesterday", "tomorrow", "now", "then",
+    # Demonstratives
+    "this", "that", "these", "those",
+}
 
 # Expanded known entities with tech stack, concepts, and tools
 KNOWN_ENTITIES = {
@@ -61,6 +78,7 @@ KNOWN_ENTITIES = {
     
     # AI/ML Concepts
     "llm": ("LLM", "concept"),
+    "ann": ("ANN", "tech"),  # Approximate Nearest Neighbors - FIXED
     "embedding": ("embedding", "concept"),
     "embeddings": ("embeddings", "concept"),
     "transformer": ("transformer", "concept"),
@@ -108,6 +126,35 @@ SPACY_LABEL_MAP = {
 }
 
 
+def is_valid_entity(text: str) -> bool:
+    """
+    Filter out noise entities
+    
+    Returns:
+        True if entity should be kept, False if it should be filtered out
+    """
+    # Normalize for checking
+    normalized = text.lower().strip()
+    
+    # Filter 1: Minimum length
+    if len(normalized) < MIN_ENTITY_LENGTH:
+        return False
+    
+    # Filter 2: Pure numbers (standalone digits)
+    if normalized.isdigit():
+        return False
+    
+    # Filter 3: Generic stopwords
+    if normalized in GENERIC_STOPWORDS:
+        return False
+    
+    # Filter 4: Single letters (except allowed ones like "I")
+    if len(normalized) == 1 and normalized not in {'i', 'a'}:
+        return False
+    
+    return True
+
+
 def normalize_entity(text: str) -> str:
     """Normalize entity text for deduplication"""
     # Remove extra whitespace
@@ -127,8 +174,10 @@ def extract_entities_regex(text: str) -> List[Tuple[str, str, float]]:
     
     for key, (name, etype) in KNOWN_ENTITIES.items():
         if key in text_lower:
-            # Confidence = 1.0 for known entities
-            entities.append((name, etype, 1.0))
+            # Apply validity filter
+            if is_valid_entity(name):
+                # Confidence = 1.0 for known entities
+                entities.append((name, etype, 1.0))
     
     # Deduplicate
     seen = set()
@@ -144,7 +193,7 @@ def extract_entities_regex(text: str) -> List[Tuple[str, str, float]]:
 
 def extract_entities_spacy(text: str) -> List[Tuple[str, str, float]]:
     """
-    Extract entities using spaCy NER
+    Extract entities using spaCy NER with noise filtering
     Returns: List of (entity_text, entity_type, confidence)
     """
     try:
@@ -162,11 +211,15 @@ def extract_entities_spacy(text: str) -> List[Tuple[str, str, float]]:
         
         # First, add known entities (high confidence)
         for key, (name, etype) in KNOWN_ENTITIES.items():
-            if key in text_lower:
+            if key in text_lower and is_valid_entity(name):
                 entities.append((name, etype, 1.0))
         
         # Then, add spaCy detected entities
         for ent in doc.ents:
+            # Apply validity filter FIRST
+            if not is_valid_entity(ent.text):
+                continue
+                
             normalized = normalize_entity(ent.text)
             
             # Skip if already found in known entities
@@ -175,6 +228,10 @@ def extract_entities_spacy(text: str) -> List[Tuple[str, str, float]]:
             
             # Map spaCy label to our types
             entity_type = SPACY_LABEL_MAP.get(ent.label_, "concept")
+            
+            # Skip NUMBER types (CARDINAL, ORDINAL) - these are noise
+            if entity_type == "number":
+                continue
             
             # Use spaCy's confidence if available, otherwise default to 0.8
             # (spaCy doesn't provide confidence scores in basic model)
