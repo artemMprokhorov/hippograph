@@ -232,7 +232,7 @@ def add_note_with_links(content, category="general", importance="normal", force=
     return result
 
 
-def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY):
+def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, category_filter=None):
     """
     Search using spreading activation algorithm.
     
@@ -241,10 +241,18 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     3. Apply temporal decay (recent notes score higher)
     4. Return top activated nodes
     
+    Args:
+        query: Search query string
+        limit: Max results to return
+        iterations: Spreading activation iterations  
+        decay: Activation decay factor
+        category_filter: Optional category to filter results (e.g., "breakthrough", "technical")
+    
     This finds notes that are:
     - Semantically similar to query
     - Connected to similar notes through shared entities
     - Recently accessed (recency boost)
+    - Optionally filtered by category
     """
     model = get_model()
     query_emb = model.encode(query)[0]
@@ -329,18 +337,28 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     sorted_nodes = sorted(activations.items(), key=lambda x: x[1], reverse=True)
     
     results = []
-    for node_id, activation in sorted_nodes[:limit]:
+    for node_id, activation in sorted_nodes:
         node = node_map.get(node_id)
-        if node:
-            # Update access tracking
-            touch_node(node_id)
-            results.append({
-                "id": node_id,
-                "content": node["content"],
-                "category": node["category"],
-                "activation": round(activation, 4),
-                "timestamp": node.get("timestamp")
-            })
+        if not node:
+            continue
+            
+        # Filter by category if specified
+        if category_filter and node.get("category") != category_filter:
+            continue
+            
+        # Update access tracking
+        touch_node(node_id)
+        results.append({
+            "id": node_id,
+            "content": node["content"],
+            "category": node["category"],
+            "activation": round(activation, 4),
+            "timestamp": node.get("timestamp")
+        })
+        
+        # Stop when we have enough results
+        if len(results) >= limit:
+            break
     
     return results
 

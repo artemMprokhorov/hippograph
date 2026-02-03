@@ -63,7 +63,8 @@ def get_tools_list():
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
-                    "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20}
+                    "limit": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20},
+                    "category": {"type": "string", "description": "Optional: filter results by category (e.g., 'breakthrough', 'technical', 'self-identity')"}
                 },
                 "required": ["query"]
             }
@@ -155,7 +156,11 @@ def handle_tool_call(params):
     args = params.get("arguments", {})
     
     if tool_name == "search_memory":
-        return tool_search_memory(args.get("query", ""), args.get("limit", 5))
+        return tool_search_memory(
+            args.get("query", ""), 
+            args.get("limit", 5),
+            args.get("category", None)
+        )
     elif tool_name == "add_note":
         return tool_add_note(
             args.get("content", ""), 
@@ -179,14 +184,20 @@ def handle_tool_call(params):
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
 
-def tool_search_memory(query: str, limit: int):
-    """Search with spreading activation"""
-    results = search_with_activation(query, limit)
+def tool_search_memory(query: str, limit: int, category: str = None):
+    """Search with spreading activation and optional category filter"""
+    results = search_with_activation(query, limit, category_filter=category)
     
     if not results:
-        text = f"No results found for: {query}"
+        if category:
+            text = f"No results found for: {query} (category: {category})"
+        else:
+            text = f"No results found for: {query}"
     else:
-        text = f"Found {len(results)} notes:\n\n"
+        if category:
+            text = f"Found {len(results)} notes in category '{category}':\n\n"
+        else:
+            text = f"Found {len(results)} notes:\n\n"
         for r in results:
             text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
             text += f"{r['content']}\n\n"
