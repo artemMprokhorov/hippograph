@@ -150,8 +150,10 @@
 - [ ] **Horizontal Scaling** - Multi-instance deployment
 
 ### User Experience
+- [x] **Import/Export** - JSON export for backups ✅ (Feb 3, 2026 - commit c8e5777)
+  - Export: Complete (nodes, edges, entities)
+  - Import: Not yet implemented
 - [ ] **Graph Visualization** - Interactive D3.js graph view
-- [ ] **Import/Export** - JSON, Markdown, CSV formats
 - [ ] **Note Templates** - Predefined note structures
 - [ ] **Auto-categorization** - ML-based category suggestions
 
