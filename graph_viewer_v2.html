@@ -336,11 +336,17 @@
     </div>
     
     <div id="timeline">
-        <label style="font-size: 12px; color: #4a9eff;">Timeline Filter</label>
+        <label style="font-size: 12px; color: #4a9eff; display: flex; justify-content: space-between; align-items: center;">
+            <span>Timeline Filter</span>
+            <button id="playPauseBtn" onclick="toggleAutoPlay()" style="width: auto; padding: 4px 12px; font-size: 11px; margin: 0;">▶ Play</button>
+        </label>
         <input type="range" id="timelineSlider" min="0" max="100" value="100" oninput="updateTimeline(this.value)">
         <div class="timeline-label">
             <span id="timelineStart">Loading...</span>
             <span id="timelineEnd">Now</span>
+        </div>
+        <div style="font-size: 10px; color: #aaa; margin-top: 5px; text-align: center;">
+            <span id="timelineInfo">Showing all notes</span>
         </div>
     </div>
     
@@ -608,9 +614,48 @@
         }
         
         function setupTimeline() {
-            // Placeholder - would need node timestamps
-            document.getElementById('timelineStart').textContent = 'Jan 2026';
-            document.getElementById('timelineEnd').textContent = 'Now';
+            if (allNodes.length === 0) return;
+            
+            // Use node IDs as proxy for time (sequential creation)
+            const ids = allNodes.map(n => parseInt(n.id)).sort((a, b) => a - b);
+            
+            if (ids.length === 0) return;
+            
+            window.timelineMinId = ids[0];
+            window.timelineMaxId = ids[ids.length - 1];
+            
+            // Estimate dates based on ID range (assume ~2 weeks of data)
+            const startDate = new Date('2026-01-22');
+            const endDate = new Date('2026-02-04');
+            
+            const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            document.getElementById('timelineStart').textContent = startStr;
+            document.getElementById('timelineEnd').textContent = endStr;
+            
+            window.timelineStartDate = startDate;
+            window.timelineEndDate = endDate;
+            
+            // Reset slider
+            document.getElementById('timelineSlider').value = 100;
+            updateTimelineInfo(100);
+        }
+        
+        function updateTimelineInfo(percent) {
+            const visibleCount = filteredNodes.length;
+            const totalCount = allNodes.length;
+            
+            if (percent >= 100) {
+                document.getElementById('timelineInfo').textContent = `Showing all ${visibleCount} notes`;
+            } else {
+                const cutoffDate = new Date(
+                    window.timelineStartDate.getTime() + 
+                    (window.timelineEndDate.getTime() - window.timelineStartDate.getTime()) * percent / 100
+                );
+                const dateStr = cutoffDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                document.getElementById('timelineInfo').textContent = `Up to ${dateStr} (${visibleCount}/${totalCount} notes)`;
+            }
         }
         
         function applyFilters() {
@@ -778,8 +823,44 @@
         }
         
         function updateTimeline(value) {
-            // Placeholder - would filter by date
-            console.log('Timeline:', value);
+            if (!window.timelineMinId || !window.timelineMaxId) return;
+            
+            const percent = parseInt(value);
+            
+            if (percent >= 100) {
+                // Show all
+                applyFilters();
+                updateTimelineInfo(100);
+                return;
+            }
+            
+            // Calculate cutoff ID based on percentage
+            const cutoffId = window.timelineMinId + 
+                (window.timelineMaxId - window.timelineMinId) * percent / 100;
+            
+            // Filter nodes by ID
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const showEntity = document.getElementById('showEntityLinks').checked;
+            const showSemantic = document.getElementById('showSemanticLinks').checked;
+            
+            filteredNodes = allNodes.filter(node => {
+                if (categoryFilter && node.category !== categoryFilter) return false;
+                if (parseInt(node.id) > cutoffId) return false;
+                return true;
+            });
+            
+            // Filter links
+            const nodeIds = new Set(filteredNodes.map(n => n.id));
+            filteredLinks = allLinks.filter(link => {
+                if (!nodeIds.has(link.source.id || link.source)) return false;
+                if (!nodeIds.has(link.target.id || link.target)) return false;
+                if (link.type === 'entity' && !showEntity) return false;
+                if (link.type === 'semantic' && !showSemantic) return false;
+                return true;
+            });
+            
+            updateTimelineInfo(percent);
+            renderGraph();
         }
         
         function resetZoom() {
@@ -792,6 +873,44 @@
         function centerGraph() {
             if (simulation) {
                 simulation.alpha(1).restart();
+            }
+        }
+        
+        // Timeline Autoplay
+        let autoplayInterval = null;
+        let autoplayDirection = 1;
+        
+        function toggleAutoPlay() {
+            const btn = document.getElementById('playPauseBtn');
+            
+            if (autoplayInterval) {
+                // Stop
+                clearInterval(autoplayInterval);
+                autoplayInterval = null;
+                btn.textContent = '▶ Play';
+            } else {
+                // Start
+                btn.textContent = '⏸ Pause';
+                const slider = document.getElementById('timelineSlider');
+                
+                autoplayInterval = setInterval(() => {
+                    let currentValue = parseInt(slider.value);
+                    
+                    // Move slider
+                    currentValue += autoplayDirection * 2;
+                    
+                    // Reverse at ends
+                    if (currentValue >= 100) {
+                        currentValue = 100;
+                        autoplayDirection = -1;
+                    } else if (currentValue <= 0) {
+                        currentValue = 0;
+                        autoplayDirection = 1;
+                    }
+                    
+                    slider.value = currentValue;
+                    updateTimeline(currentValue);
+                }, 200); // Update every 200ms
             }
         }
         
