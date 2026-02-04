@@ -40,23 +40,7 @@
 
 ---
 
-### 3. Security Tiers Implementation ✅ Spec Complete
-**Current Issue:** Server runs on 0.0.0.0 with public ngrok by default
-**Goal:** Secure by default, opt-in for exposure
-
-**Tasks:**
-- [ ] Change default SERVER_HOST to 127.0.0.1
-- [ ] Add .env.example with security warnings
-- [ ] README security section
-- [ ] Startup console warning about current security tier
-- [ ] Validate strong API key if public access enabled
-
-**Success Metric:** New users start with localhost-only
-**Estimated:** 1-2 hours
-
----
-
-### 4. Graph Visualization Web Service
+### 3. Graph Visualization Web Service ⏳ IN PROGRESS
 **Current Issue:** No easy way to see memory graph structure
 **Goal:** Simple web UI to explore connections
 
@@ -71,7 +55,7 @@
 
 ---
 
-### 5. Retrieval Quality Testing
+### 4. Retrieval Quality Testing
 **Current Issue:** No systematic testing of search accuracy
 **Goal:** Measure and improve search relevance
 

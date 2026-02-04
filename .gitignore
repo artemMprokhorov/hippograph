@@ -18,7 +18,8 @@ build/
 *.sqlite3
 data/
 
-# Environment
+# Environment & Credentials
+# NEVER commit API keys, ngrok URLs, or sensitive config
 .env
 .env.local
 .env.*.local
