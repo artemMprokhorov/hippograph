@@ -872,13 +872,16 @@
             // Draw labels LAST (on top of everything)
             const labelGroup = g.append('g').attr('class', 'labels-layer');
             
+            const showLabels = document.getElementById('showLabels').checked;
+            
             labelElements = labelGroup
                 .selectAll('text')
                 .data(filteredNodes)
                 .enter().append('text')
                 .attr('class', 'node-label')
                 .text(d => d.label)
-                .attr('dy', 20);
+                .attr('dy', 20)
+                .style('display', showLabels ? 'block' : 'none');
             
             // Update positions on tick
             simulation.on('tick', () => {
