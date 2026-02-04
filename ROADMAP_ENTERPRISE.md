@@ -262,6 +262,164 @@ Each tier must have:
 
 *Note: Current implementation is optimized for personal use (~200-1000 notes). The following features would be required for enterprise deployment at scale.*
 
+---
+
+## 🆕 ADDITIONAL FEEDBACK - Feb 4, 2026
+
+**Source:** External review for enterprise-level deployment (5K-10K notes)
+
+### Database Operations (Enterprise Only)
+
+#### **Bulk Delete/Cleanup Operations** 
+**Request:** Delete edges < weight X, remove orphan nodes, category purging
+
+**Implementation:**
+- [ ] Bulk edge deletion by weight threshold
+- [ ] Orphan node cleanup (no connections + age filter)
+- [ ] Category-based bulk removal
+- [ ] Cascade delete with safety checks
+- [ ] Transaction rollback on errors
+
+**Why Enterprise Only:** Personal use philosophy is "fade, not delete". Enterprise databases need data management tools.
+
+**Safety:**
+- Mandatory backup before bulk operations
+- Dry-run mode with preview
+- Audit log of deletions
+- Undelete buffer (grace period)
+
+---
+
+#### **Graph Versioning (Full State Snapshots)**
+**Request:** Rollback entire graph to previous state
+
+**Implementation:**
+- [ ] Periodic graph snapshots (nodes + edges + entities)
+- [ ] Differential backups (only changes)
+- [ ] Point-in-time restore
+- [ ] Version tagging (pre-recompute, pre-cleanup)
+- [ ] Storage optimization (compression, deduplication)
+
+**Why Enterprise Only:** 
+- High disk space cost (10K notes = ~100MB+ per snapshot)
+- Personal use has per-note versioning (sufficient)
+- Enterprise needs audit trail + disaster recovery
+
+---
+
+#### **Model Hot-Swapping**
+**Request:** Switch embedding models without full recompute
+
+**Implementation:**
+- [ ] Multiple embedding models side-by-side
+- [ ] Lazy recompute (on-access migration)
+- [ ] Model performance comparison
+- [ ] A/B testing framework
+- [ ] Model registry (version, metrics, config)
+
+**Why Enterprise Only:**
+- Complex: requires dual-index support
+- Personal: one-time model selection sufficient
+- Enterprise: continuous optimization, multilingual needs
+
+---
+
+### Retrieval & Monitoring (Applies to Both)
+
+#### **Advanced Search Reranking** ⭐
+**Request:** Multi-factor ranking beyond spreading activation
+
+**Implementation:**
+- [ ] Combine factors: graph distance + recency + importance + entity overlap
+- [ ] Query-specific weights (configurable per search)
+- [ ] Learning-to-rank from feedback
+- [ ] Result diversity (avoid clustering)
+- [ ] Explanation scores (why this result?)
+
+**Priority:** HIGH for both personal + enterprise
+
+---
+
+#### **Retrieval Quality Metrics** ⭐
+**Request:** Observability into search degradation
+
+**Implementation:**
+- [ ] Query logs (timestamp, query, results, latency)
+- [ ] Metrics: hit rate, recall@K, precision, NDCG
+- [ ] False positive tracking (entity links)
+- [ ] Performance dashboard
+- [ ] Alert on degradation thresholds
+
+**Priority:** MEDIUM for personal (research), HIGH for enterprise (SLA)
+
+---
+
+#### **Context Window Management** ⭐⭐⭐
+**Request:** Prevent MCP overflow with large graphs
+
+**Implementation:**
+- [x] Token counting for results
+- [ ] Truncation strategies:
+  - Top-K most relevant
+  - Summary mode (compress chains)
+  - Progressive detail levels
+- [ ] `max_tokens` parameter in MCP
+- [ ] Smart trimming (keep salient, summarize rest)
+
+**Priority:** CRITICAL for both (blocks scaling beyond 500 notes)
+
+---
+
+### Entity Resolution (Advanced - Enterprise)
+
+#### **Entity Disambiguation & Coreference**
+**Request:** "Apple company vs fruit", pronoun resolution, synonym merging
+
+**Implementation:**
+- [ ] Entity linking to knowledge base (Wikipedia, DBpedia)
+- [ ] Context-based disambiguation (surrounding text)
+- [ ] Coreference resolution (pronoun → entity)
+- [ ] Synonym/acronym merging (ML → Machine Learning)
+- [ ] User feedback loop (confirm/correct)
+
+**Why Enterprise Only:**
+- Complex: requires external KB + NLP pipeline
+- High maintenance: KB updates, model training
+- Personal: manual correction via notes sufficient
+- Enterprise: critical for automated knowledge extraction
+
+---
+
+### User Interface (Enterprise)
+
+#### **Connection Approval Workflow**
+**Request:** Review auto-generated edges before commit
+
+**Implementation:**
+- [ ] Pending edges queue (not persisted until approved)
+- [ ] Web UI: approve/reject/defer
+- [ ] Confidence scores for auto-approval
+- [ ] Batch review mode
+- [ ] Smart suggestions (similar to approved edges)
+
+**Priority:** MEDIUM for personal (reduces noise), HIGH for enterprise (quality control)
+
+---
+
+#### **CLI/TUI Interface** ⭐
+**Request:** Quick terminal access without web viewer
+
+**Implementation:**
+- [ ] Python CLI: `hippograph add/search/stats/delete`
+- [ ] Rich TUI for interactive browsing
+- [ ] Config file (~/.hippograph/config.yaml)
+- [ ] Shell completions (bash/zsh)
+- [ ] Piping support (stdin/stdout)
+
+**Priority:** MEDIUM for both (developer experience)
+
+---
+
 ### ⚠️  Edge Pruning (Optional - Enterprise Only)
 **Status:** Implemented as optional script  
 **Commit:** TBD  
