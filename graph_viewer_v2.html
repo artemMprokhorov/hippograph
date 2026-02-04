@@ -177,9 +177,7 @@
         }
         
         .link {
-            stroke: #666;
-            stroke-opacity: 0.3;
-            stroke-width: 1px;
+            /* Default styling - will be overridden by D3 */
             transition: stroke 0.2s, stroke-opacity 0.2s;
         }
         
@@ -904,12 +902,14 @@
         }
         
         function showLinkInfo(event, link) {
-            event.stopPropagation();
+            if (event) event.stopPropagation();
             
             const sourceId = link.source.id || link.source;
             const targetId = link.target.id || link.target;
             const weight = (link.weight || 0).toFixed(2);
             const linkType = link.type;
+            
+            console.log('showLinkInfo called:', { sourceId, targetId, weight, linkType });
             
             document.getElementById('nodeInfo').innerHTML = `
                 <h3 style="margin-top: 20px; font-size: 14px;">Link Info</h3>
