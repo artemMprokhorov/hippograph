@@ -220,6 +220,8 @@
             border: 1px solid #333;
             font-size: 11px;
             max-width: 200px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
         }
         
         .legend-item {
@@ -247,12 +249,13 @@
         #timeline {
             position: absolute;
             bottom: 15px;
-            right: 15px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(20, 20, 20, 0.95);
             padding: 15px;
             border-radius: 12px;
             border: 1px solid #333;
-            width: 300px;
+            width: 400px;
         }
         
         .timeline-label {
