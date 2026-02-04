@@ -260,7 +260,7 @@
         /* Weight Legend */
         #weightLegend {
             position: absolute;
-            bottom: 15px;
+            bottom: 230px;
             left: 15px;
             background: rgba(20, 20, 20, 0.95);
             padding: 15px;
@@ -609,32 +609,45 @@
                 allLinks = [];
                 const sampleSize = Math.min(30, allNodes.length);
                 
+                console.log('Building links from', sampleSize, 'sample nodes...');
+                
                 for (let i = 0; i < sampleSize; i++) {
                     const node = allNodes[i];
                     try {
                         const graphData = await callAPI('get_graph', { note_id: parseInt(node.id) });
                         const connections = graphData.content[0].text;
                         
-                        // Parse connections
-                        const linkMatches = connections.matchAll(/→ \[(\w+)\].*?\(weight: ([\d.]+)\).*?#(\d+):/g);
-                        for (const match of linkMatches) {
-                            const linkType = match[1];
-                            const weight = parseFloat(match[2]);
-                            const targetId = match[3];
-                            
-                            if (nodeMap.has(targetId)) {
-                                allLinks.push({
-                                    source: node.id,
-                                    target: targetId,
-                                    type: linkType,
-                                    weight: weight
-                                });
+                        // Parse connections - two formats:
+                        // Format 1: → [entity] (weight: 0.60) #12: ...
+                        // Format 2: → [semantic] (weight: 0.52) #246: ...
+                        const lines = connections.split('\n');
+                        for (const line of lines) {
+                            const match = line.match(/→ \[(\w+)\] \(weight: ([\d.]+)\).*?#(\d+):/);
+                            if (match) {
+                                const linkType = match[1];
+                                const weight = parseFloat(match[2]);
+                                const targetId = match[3];
+                                
+                                if (nodeMap.has(targetId)) {
+                                    allLinks.push({
+                                        source: node.id,
+                                        target: targetId,
+                                        type: linkType,
+                                        weight: weight
+                                    });
+                                    if (i === 0) {
+                                        console.log('Sample link:', { linkType, weight, source: node.id, target: targetId });
+                                    }
+                                }
                             }
                         }
                     } catch (e) {
                         // Skip if get_graph fails
                     }
                 }
+                
+                console.log('Total links created:', allLinks.length);
+                console.log('Sample links:', allLinks.slice(0, 3));
                 
                 // Update stats display
                 document.getElementById('stats').innerHTML = `
