@@ -22,6 +22,19 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
 
+**Interactive Web Visualization:**
+<p align="center">
+  <img src="docs/images/graph-viewer-demo.png" width="600" alt="Graph Viewer Demo">
+</p>
+
+- 🌐 **Real-time Graph Explorer** — Interactive D3.js visualization of your knowledge graph
+- 🎨 **Color-Coded Categories** — Visual distinction between note types (milestones, breakthroughs, reflections)
+- 🔍 **Smart Filters** — Filter by category, time range, link types (entity/semantic)
+- 📈 **Link Weight Visualization** — Gradient colors show connection strength (gray → bright blue)
+- ⏱️ **Timeline Playback** — Watch your knowledge base grow over time with autoplay
+- 🖱️ **Interactive Exploration** — Click nodes for details, click links to see weights
+- 🔐 **Secure Access** — Config UI for API credentials, no hardcoded keys
+
 **Technical Features:**
 - 384-dimensional semantic embeddings (all-MiniLM-L6-v2)
 - SQLite graph database with nodes, edges, and entities
@@ -31,6 +44,8 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
 - **spaCy NER** for advanced entity extraction (people, organizations, locations)
+- **Web Viewer** — nginx-served interactive visualization (port 5002)
+- **Security-hardened** — XSS protection, CSP headers, input validation
 - Docker-ready deployment
 
 ---
@@ -72,16 +87,37 @@ The server will:
 - Download embedding models (~2GB on first run)
 - Download spaCy model for entity extraction  
 - Initialize SQLite database
-- Start on `http://localhost:5000`
+- Start API on `http://localhost:5001`
+- Start Web Viewer on `http://localhost:5002`
 
-### 3. Verify Installation
+### 3. Access Web Viewer
+
+Open your browser:
+```
+http://localhost:5002
+```
+
+**First-time setup:**
+1. Enter API endpoint: `http://localhost:5001/sse2`
+2. Enter API key from your `.env` file
+3. Click "Connect and Load Graph"
+4. Explore your knowledge graph! 🎨
+
+**Features:**
+- Drag nodes to rearrange
+- Zoom and pan
+- Click nodes for details
+- Toggle filters and visualizations
+- Use timeline to see growth over time
+
+### 4. Verify Installation
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 # Expected: {"status": "ok", "version": "2.0.0"}
 ```
 
-### 4. Setup Remote Access (Optional)
+### 5. Setup Remote Access (Optional)
 
 For Claude.ai integration or remote use, you need a public HTTPS URL.  
 See [Setup Guide](docs/SETUP_GUIDE.md) for options:
