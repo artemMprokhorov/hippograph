@@ -10,7 +10,7 @@ import hashlib
 import hmac
 import os
 
-from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node
+from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node, get_note_history, restore_note_version
 from graph_engine import add_note_with_links, search_with_activation, get_node_graph
 from stable_embeddings import get_model
 
@@ -149,6 +149,30 @@ def get_tools_list():
                 },
                 "required": ["content"]
             }
+        },
+        {
+            "name": "get_note_history",
+            "description": "Get version history for a note",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "integer"},
+                    "limit": {"type": "integer", "default": 5}
+                },
+                "required": ["note_id"]
+            }
+        },
+        {
+            "name": "restore_note_version",
+            "description": "Restore a note to a previous version",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "integer"},
+                    "version_number": {"type": "integer"}
+                },
+                "required": ["note_id", "version_number"]
+            }
         }
     ]
 
@@ -186,6 +210,11 @@ def handle_tool_call(params):
         return tool_set_importance(args.get("note_id"), args.get("importance"))
     elif tool_name == "find_similar":
         return tool_find_similar(args.get("content", ""), args.get("threshold", 0.7), args.get("limit", 5))
+    
+    elif tool_name == "get_note_history":
+        return tool_get_note_history(args.get("note_id"), args.get("limit", 5))
+    elif tool_name == "restore_note_version":
+        return tool_restore_note_version(args.get("note_id"), args.get("version_number"))
     
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
@@ -419,3 +448,42 @@ def create_mcp_endpoint(app):
     @app.route("/health", methods=["GET"])
     def health():
         return jsonify({"status": "ok", "version": "2.0.0"})
+
+
+def tool_get_note_history(note_id: int, limit: int = 5):
+    """Get version history for a note"""
+    versions = get_note_history(note_id, limit)
+    if not versions:
+        return {"error": "No version history found for this note"}
+    
+    result = {
+        "note_id": note_id,
+        "total_versions": len(versions),
+        "versions": []
+    }
+    
+    for v in versions:
+        result["versions"].append({
+            "version": v["version_number"],
+            "created_at": v["created_at"],
+            "content_preview": v["content"][:100] + "..." if len(v["content"]) > 100 else v["content"],
+            "category": v["category"],
+            "importance": v["importance"]
+        })
+    
+    return result
+
+
+def tool_restore_note_version(note_id: int, version_number: int):
+    """Restore a note to a previous version"""
+    success = restore_note_version(note_id, version_number)
+    
+    if not success:
+        return {"error": "Version not found or restore failed"}
+    
+    return {
+        "success": True,
+        "message": f"Note #{note_id} restored to version {version_number}",
+        "note_id": note_id,
+        "restored_version": version_number
+    }

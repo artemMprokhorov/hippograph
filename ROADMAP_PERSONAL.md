@@ -24,19 +24,19 @@
 
 ---
 
-### 2. Note Versioning (Simple) 
-**Current Issue:** update_note overwrites with no history
+### 2. Note Versioning (Simple) ✅ COMPLETE
+**Completed:** Feb 3-4, 2026
 **Goal:** Basic version history for important notes
 
-**Tasks:**
-- [ ] Timestamp-based snapshots on update
-- [ ] Store last N versions (default: 5)
-- [ ] View version history for a note
-- [ ] Restore from previous version
-- [ ] Optional: diff view between versions
+**Implemented:**
+- [x] Timestamp-based snapshots on update (auto-save before each update)
+- [x] Store last N versions (default: 5, configurable in database)
+- [x] View version history for a note (get_note_history MCP tool)
+- [x] Restore from previous version (restore_note_version MCP tool)
+- [x] Database migration: note_versions table with full metadata
 
-**Success Metric:** Can recover accidentally overwritten notes
-**Estimated:** 2-3 hours
+**Success Metric:** Can recover accidentally overwritten notes ✅ VERIFIED
+**Files:** `src/database.py`, `src/mcp_sse_handler.py`, migration script
 
 ---
 
