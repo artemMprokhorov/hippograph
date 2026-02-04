@@ -796,22 +796,20 @@
                 .force('center', d3.forceCenter(width / 2, height / 2))
                 .force('collision', d3.forceCollide().radius(40));
             
-            // Draw links
+            // IMPORTANT: Draw links FIRST, then nodes on top
+            // This ensures nodes are clickable and links are behind
+            
+            // Draw links FIRST
             const showWeights = document.getElementById('showLinkWeights').checked;
             
-            console.log('renderGraph: showWeights =', showWeights);
-            console.log('Sample link data:', filteredLinks[0]);
+            const linkGroup = g.append('g').attr('class', 'links-layer');
             
-            linkElements = g.append('g')
+            linkElements = linkGroup
                 .selectAll('line')
                 .data(filteredLinks)
                 .enter().append('line')
                 .attr('class', 'link')
-                .attr('stroke', d => {
-                    const color = showWeights ? getWeightColor(d.weight || 0.5) : '#666';
-                    if (showWeights) console.log('Link stroke color:', color, 'weight:', d.weight);
-                    return color;
-                })
+                .attr('stroke', d => showWeights ? getWeightColor(d.weight || 0.5) : '#666')
                 .attr('stroke-opacity', d => showWeights ? getWeightOpacity(d.weight || 0.5) : 0.3)
                 .attr('stroke-width', d => {
                     const baseWidth = d.type === 'semantic' ? 2 : 1;
@@ -820,8 +818,10 @@
                 .on('click', (event, d) => showLinkInfo(event, d))
                 .style('cursor', 'pointer');
             
-            // Draw nodes
-            nodeElements = g.append('g')
+            // Draw nodes AFTER links (on top)
+            const nodeGroup = g.append('g').attr('class', 'nodes-layer');
+            
+            nodeElements = nodeGroup
                 .selectAll('circle')
                 .data(filteredNodes)
                 .enter().append('circle')
@@ -836,8 +836,10 @@
                     .on('drag', dragged)
                     .on('end', dragended));
             
-            // Draw labels
-            labelElements = g.append('g')
+            // Draw labels LAST (on top of everything)
+            const labelGroup = g.append('g').attr('class', 'labels-layer');
+            
+            labelElements = labelGroup
                 .selectAll('text')
                 .data(filteredNodes)
                 .enter().append('text')
@@ -958,15 +960,11 @@
         function toggleLinkWeights() {
             const show = document.getElementById('showLinkWeights').checked;
             
-            console.log('toggleLinkWeights called, show:', show);
-            console.log('filteredNodes.length:', filteredNodes.length);
-            
             // Show/hide weight legend
             document.getElementById('weightLegend').style.display = show ? 'block' : 'none';
             
             // Re-render graph with new weight settings
             if (filteredNodes.length > 0) {
-                console.log('Re-rendering graph with weights:', show);
                 renderGraph();
             }
         }
