@@ -2,6 +2,9 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- CSP: Security policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://d3js.org; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://192.168.0.212:5001 https://*.ngrok-free.app; img-src 'self' data:;">
     <title>HippoGraph - Neural Memory Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
@@ -412,6 +415,18 @@
     <svg id="graph"></svg>
     
     <script>
+        // Security: HTML escaping to prevent XSS
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
         // Configuration
         let API_URL = '';
         let API_KEY = '';
@@ -486,7 +501,7 @@
             return 0.2 + (weight * 0.6);
         }
         
-        // Config Management
+        // Config Management with expiration
         function saveConfigAndLoad() {
             API_URL = document.getElementById('apiUrl').value.trim();
             API_KEY = document.getElementById('apiKey').value.trim();
@@ -496,10 +511,20 @@
                 return;
             }
             
+            // Validate URL format
+            try {
+                new URL(API_URL);
+            } catch (e) {
+                alert('Invalid API URL format. Please check the URL.');
+                return;
+            }
+            
             // Save to localStorage for convenience (user's choice)
-            if (confirm('Save configuration locally? (stored in browser only, not in git)')) {
+            if (confirm('Save configuration locally? (stored in browser only, expires in 7 days)')) {
+                const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
                 localStorage.setItem('hippograph_api_url', API_URL);
                 localStorage.setItem('hippograph_api_key', API_KEY);
+                localStorage.setItem('hippograph_expiry', expiry.toString());
             }
             
             // Hide config panel, show main controls
@@ -510,10 +535,20 @@
             loadFullGraph();
         }
         
-        // Load saved config on startup
+        // Load saved config on startup with expiry check
         window.addEventListener('DOMContentLoaded', () => {
             const savedUrl = localStorage.getItem('hippograph_api_url');
             const savedKey = localStorage.getItem('hippograph_api_key');
+            const expiry = localStorage.getItem('hippograph_expiry');
+            
+            // Check if config expired
+            if (expiry && Date.now() > parseInt(expiry)) {
+                // Expired - clear all
+                localStorage.removeItem('hippograph_api_url');
+                localStorage.removeItem('hippograph_api_key');
+                localStorage.removeItem('hippograph_expiry');
+                return;
+            }
             
             if (savedUrl) document.getElementById('apiUrl').value = savedUrl;
             if (savedKey) document.getElementById('apiKey').value = savedKey;
@@ -894,20 +929,24 @@
         }
         
         function showNodeInfo(node) {
+            const safeId = escapeHtml(node.id);
+            const safeCategory = escapeHtml(node.category);
+            const safeContent = escapeHtml(node.content);
+            
             document.getElementById('nodeInfo').innerHTML = `
-                <h3 style="margin-top: 20px; font-size: 14px;">Node #${node.id}</h3>
-                <div class="stat"><strong>Category:</strong> ${node.category}</div>
-                <div class="stat" style="line-height: 1.4; white-space: pre-wrap;">${node.content}...</div>
+                <h3 style="margin-top: 20px; font-size: 14px;">Node #${safeId}</h3>
+                <div class="stat"><strong>Category:</strong> ${safeCategory}</div>
+                <div class="stat" style="line-height: 1.4; white-space: pre-wrap;">${safeContent}...</div>
             `;
         }
         
         function showLinkInfo(event, link) {
             if (event) event.stopPropagation();
             
-            const sourceId = link.source.id || link.source;
-            const targetId = link.target.id || link.target;
+            const sourceId = escapeHtml(link.source.id || link.source);
+            const targetId = escapeHtml(link.target.id || link.target);
             const weight = (link.weight || 0).toFixed(2);
-            const linkType = link.type;
+            const linkType = escapeHtml(link.type);
             
             console.log('showLinkInfo called:', { sourceId, targetId, weight, linkType });
             
@@ -924,7 +963,14 @@
         }
         
         function handleSearch() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            // Input validation: max 100 chars, no special chars that could cause issues
+            if (query.length > 100) {
+                alert('Search query too long (max 100 characters)');
+                return;
+            }
+            
             if (!query) {
                 clearHighlight();
                 return;
