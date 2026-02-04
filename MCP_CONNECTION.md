@@ -4,8 +4,8 @@
 
 ### API Key
 **Location:** Server only (`/Volumes/Balances/semantic-memory-v2/.env`)  
-**Format:** `NEURAL_API_KEY=neuralv3202602lXcvMBMtYQVhDna2EU59uO79u2RUZ67Br6sq5PD4b1FGyBGM5bc596c7`  
-**Note:** NEVER commit API keys to git
+**Format:** `NEURAL_API_KEY=your_secure_key_here`  
+**Note:** NEVER commit API keys to git - get from server .env file
 
 ### MCP Endpoint
 ```
