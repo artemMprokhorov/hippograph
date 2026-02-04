@@ -180,6 +180,11 @@
             stroke: #666;
             stroke-opacity: 0.3;
             stroke-width: 1px;
+            transition: stroke 0.2s, stroke-opacity 0.2s;
+        }
+        
+        .link.weighted {
+            /* Weight-based gradient applied dynamically */
         }
         
         .link.highlighted {
@@ -190,6 +195,13 @@
         
         .link.faded {
             opacity: 0.1;
+        }
+        
+        .link-weight-label {
+            font-size: 9px;
+            fill: #aaa;
+            pointer-events: none;
+            text-anchor: middle;
         }
         
         .node-label {
@@ -243,6 +255,35 @@
             height: 12px;
             border-radius: 50%;
             border: 1px solid #000;
+        }
+        
+        /* Weight Legend */
+        #weightLegend {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(20, 20, 20, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            font-size: 11px;
+            max-width: 200px;
+        }
+        
+        .weight-gradient-bar {
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to right, #333 0%, #4a9eff 100%);
+            border-radius: 4px;
+            margin: 8px 0;
+            border: 1px solid #555;
+        }
+        
+        .weight-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #888;
         }
         
         /* Timeline Slider */
@@ -318,6 +359,10 @@
                 <input type="checkbox" id="showSemanticLinks" checked onchange="applyFilters()">
                 Show Semantic Links
             </label>
+            <label>
+                <input type="checkbox" id="showLinkWeights" onchange="toggleLinkWeights()">
+                Show Link Weights
+            </label>
         </div>
         
         <button onclick="resetZoom()">Reset View</button>
@@ -336,6 +381,19 @@
     <div id="legend">
         <h3 style="font-size: 13px; margin-bottom: 10px;">Categories</h3>
         <div id="legendContent"></div>
+    </div>
+    
+    <div id="weightLegend" style="display: none;">
+        <h3 style="font-size: 13px; margin-bottom: 10px;">Link Weights</h3>
+        <div class="weight-gradient-bar"></div>
+        <div class="weight-labels">
+            <span>Weak (0.0)</span>
+            <span>Strong (1.0)</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 10px; color: #aaa; line-height: 1.4;">
+            Semantic links: similarity<br>
+            Entity links: shared entities
+        </div>
     </div>
     
     <div id="timeline">
@@ -407,6 +465,27 @@
         
         function getColor(category) {
             return categoryColors[category] || categoryColors.default;
+        }
+        
+        // Weight to color mapping
+        function getWeightColor(weight) {
+            // Gradient from dark gray (#333) to bright blue (#4a9eff)
+            const w = Math.max(0, Math.min(1, weight)); // Clamp 0-1
+            
+            // Interpolate RGB
+            const r1 = 0x33, g1 = 0x33, b1 = 0x33; // #333
+            const r2 = 0x4a, g2 = 0x9e, b2 = 0xff; // #4a9eff
+            
+            const r = Math.round(r1 + (r2 - r1) * w);
+            const g = Math.round(g1 + (g2 - g1) * w);
+            const b = Math.round(b1 + (b2 - b1) * w);
+            
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+        
+        function getWeightOpacity(weight) {
+            // Opacity from 0.2 (weak) to 0.8 (strong)
+            return 0.2 + (weight * 0.6);
         }
         
         // Config Management
@@ -537,16 +616,18 @@
                         const connections = graphData.content[0].text;
                         
                         // Parse connections
-                        const linkMatches = connections.matchAll(/→ \[(\w+)\].*?#(\d+):/g);
+                        const linkMatches = connections.matchAll(/→ \[(\w+)\].*?\(weight: ([\d.]+)\).*?#(\d+):/g);
                         for (const match of linkMatches) {
                             const linkType = match[1];
-                            const targetId = match[2];
+                            const weight = parseFloat(match[2]);
+                            const targetId = match[3];
                             
                             if (nodeMap.has(targetId)) {
                                 allLinks.push({
                                     source: node.id,
                                     target: targetId,
-                                    type: linkType
+                                    type: linkType,
+                                    weight: weight
                                 });
                             }
                         }
@@ -703,12 +784,19 @@
                 .force('collision', d3.forceCollide().radius(40));
             
             // Draw links
+            const showWeights = document.getElementById('showLinkWeights').checked;
+            
             linkElements = g.append('g')
                 .selectAll('line')
                 .data(filteredLinks)
                 .enter().append('line')
                 .attr('class', 'link')
-                .attr('stroke-width', d => d.type === 'semantic' ? 2 : 1);
+                .attr('stroke', d => showWeights ? getWeightColor(d.weight || 0.5) : '#666')
+                .attr('stroke-opacity', d => showWeights ? getWeightOpacity(d.weight || 0.5) : 0.3)
+                .attr('stroke-width', d => {
+                    const baseWidth = d.type === 'semantic' ? 2 : 1;
+                    return showWeights ? baseWidth + (d.weight || 0) * 2 : baseWidth;
+                });
             
             // Draw nodes
             nodeElements = g.append('g')
@@ -822,6 +910,32 @@
             const show = document.getElementById('showLabels').checked;
             if (labelElements) {
                 labelElements.style('display', show ? 'block' : 'none');
+            }
+        }
+        
+        function toggleLinkWeights() {
+            const show = document.getElementById('showLinkWeights').checked;
+            
+            // Show/hide weight legend
+            document.getElementById('weightLegend').style.display = show ? 'block' : 'none';
+            
+            // Update link colors
+            if (linkElements) {
+                if (show) {
+                    linkElements
+                        .attr('stroke', d => getWeightColor(d.weight || 0.5))
+                        .attr('stroke-opacity', d => getWeightOpacity(d.weight || 0.5))
+                        .attr('stroke-width', d => {
+                            const baseWidth = d.type === 'semantic' ? 2 : 1;
+                            return baseWidth + (d.weight || 0) * 2;
+                        });
+                } else {
+                    // Reset to default
+                    linkElements
+                        .attr('stroke', '#666')
+                        .attr('stroke-opacity', 0.3)
+                        .attr('stroke-width', d => d.type === 'semantic' ? 2 : 1);
+                }
             }
         }
         
