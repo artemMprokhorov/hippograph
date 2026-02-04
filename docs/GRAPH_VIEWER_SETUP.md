@@ -53,11 +53,11 @@ docker-compose up -d
 ifconfig | grep "inet " | grep -v 127.0.0.1
 
 # Open in browser from any device on LAN
-http://192.168.0.212:5002  # Replace with your IP
+http://YOUR_LOCAL_IP:5002  # Replace with your IP
 ```
 
 **Configuration:**
-- API Endpoint: `http://192.168.0.212:5001/sse2`
+- API Endpoint: `http://YOUR_LOCAL_IP:5001/sse2`
 - API Key: From your `.env` file
 
 **Use Case:** 
@@ -140,7 +140,7 @@ The viewer enforces strict Content Security Policy:
 ```
 script-src:  self, unsafe-inline, https://d3js.org
 style-src:   self, unsafe-inline
-connect-src: localhost:5001, 192.168.0.212:5001, *.ngrok-free.app
+connect-src: localhost:5001, YOUR_LOCAL_IP:5001, *.ngrok-free.app
 img-src:     self, data:
 ```
 
@@ -174,7 +174,7 @@ grep NEURAL_API_KEY .env
 open http://localhost:5002
 
 # LAN (replace with your IP)
-open http://192.168.0.212:5002
+open http://YOUR_LOCAL_IP:5002
 ```
 
 4. **Configure Connection:**
@@ -182,7 +182,7 @@ open http://192.168.0.212:5002
 In the viewer interface:
 - **API Endpoint URL:** Choose based on deployment:
   - Localhost: `http://localhost:5001/sse2`
-  - LAN: `http://192.168.0.212:5001/sse2`
+  - LAN: `http://YOUR_LOCAL_IP:5001/sse2`
   - Internet: `https://your-url.ngrok-free.app/sse2`
 - **API Key:** Paste from `.env`
 - Click "Connect and Load Graph"
@@ -250,7 +250,7 @@ docker-compose up -d
 
 **Option A: LAN Access (Easy)**
 1. Phone and server on same WiFi
-2. Open: `http://192.168.0.212:5002`
+2. Open: `http://YOUR_LOCAL_IP:5002`
 3. Configure with LAN API endpoint
 4. Save credentials for convenience
 
@@ -264,7 +264,7 @@ docker-compose up -d
 
 **Small Team (Same Office):**
 - Use LAN deployment (Option 2)
-- Share IP address: `http://192.168.0.212:5002`
+- Share IP address: `http://YOUR_LOCAL_IP:5002`
 - Each person uses same API key (from `.env`)
 - All view same knowledge graph
 
