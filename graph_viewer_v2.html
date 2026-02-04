@@ -799,17 +799,26 @@
             // Draw links
             const showWeights = document.getElementById('showLinkWeights').checked;
             
+            console.log('renderGraph: showWeights =', showWeights);
+            console.log('Sample link data:', filteredLinks[0]);
+            
             linkElements = g.append('g')
                 .selectAll('line')
                 .data(filteredLinks)
                 .enter().append('line')
                 .attr('class', 'link')
-                .attr('stroke', d => showWeights ? getWeightColor(d.weight || 0.5) : '#666')
+                .attr('stroke', d => {
+                    const color = showWeights ? getWeightColor(d.weight || 0.5) : '#666';
+                    if (showWeights) console.log('Link stroke color:', color, 'weight:', d.weight);
+                    return color;
+                })
                 .attr('stroke-opacity', d => showWeights ? getWeightOpacity(d.weight || 0.5) : 0.3)
                 .attr('stroke-width', d => {
                     const baseWidth = d.type === 'semantic' ? 2 : 1;
                     return showWeights ? baseWidth + (d.weight || 0) * 2 : baseWidth;
-                });
+                })
+                .on('click', (event, d) => showLinkInfo(event, d))
+                .style('cursor', 'pointer');
             
             // Draw nodes
             nodeElements = g.append('g')
@@ -892,6 +901,26 @@
             `;
         }
         
+        function showLinkInfo(event, link) {
+            event.stopPropagation();
+            
+            const sourceId = link.source.id || link.source;
+            const targetId = link.target.id || link.target;
+            const weight = (link.weight || 0).toFixed(2);
+            const linkType = link.type;
+            
+            document.getElementById('nodeInfo').innerHTML = `
+                <h3 style="margin-top: 20px; font-size: 14px;">Link Info</h3>
+                <div class="stat"><strong>Type:</strong> ${linkType}</div>
+                <div class="stat"><strong>Weight:</strong> ${weight}</div>
+                <div class="stat"><strong>From:</strong> Node #${sourceId}</div>
+                <div class="stat"><strong>To:</strong> Node #${targetId}</div>
+                <div class="stat" style="margin-top: 10px; font-size: 10px; color: #888;">
+                    ${linkType === 'semantic' ? 'Semantic similarity between content' : 'Shared entities connection'}
+                </div>
+            `;
+        }
+        
         function handleSearch() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             if (!query) {
@@ -929,11 +958,15 @@
         function toggleLinkWeights() {
             const show = document.getElementById('showLinkWeights').checked;
             
+            console.log('toggleLinkWeights called, show:', show);
+            console.log('filteredNodes.length:', filteredNodes.length);
+            
             // Show/hide weight legend
             document.getElementById('weightLegend').style.display = show ? 'block' : 'none';
             
             // Re-render graph with new weight settings
             if (filteredNodes.length > 0) {
+                console.log('Re-rendering graph with weights:', show);
                 renderGraph();
             }
         }
