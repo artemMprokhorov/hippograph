@@ -13,8 +13,8 @@ https://grand-beagle-reliably.ngrok-free.app/sse2?api_key=[INSERT_KEY_HERE]
 ```
 
 ### Server Details
-- **Local:** http://192.168.0.212:5001
-- **SSH:** `ssh -i ~/.ssh/studio_key apple.holder.accgmail.com@192.168.0.212`
+- **Local:** http://YOUR_LOCAL_IP:5001
+- **SSH:** `ssh -i ~/.ssh/studio_key YOUR_USERNAME@YOUR_LOCAL_IP`
 - **Docker:** `/usr/local/bin/docker-compose` in `/Volumes/Balances/semantic-memory-v2/`
 
 ### Available Tools (10)

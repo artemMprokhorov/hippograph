@@ -117,7 +117,7 @@ Missing CSP headers could allow execution of unauthorized external scripts.
       content="default-src 'self'; 
                script-src 'self' 'unsafe-inline' https://d3js.org; 
                style-src 'self' 'unsafe-inline'; 
-               connect-src 'self' http://localhost:5001 http://192.168.0.212:5001 https://*.ngrok-free.app; 
+               connect-src 'self' http://localhost:5001 http://YOUR_LOCAL_IP:5001 https://*.ngrok-free.app; 
                img-src 'self' data:;">
 ```
 
@@ -208,8 +208,8 @@ localStorage.setItem('hippograph_expiry', '0');
 
 **Access Points:**
 - Local: http://localhost:5002
-- Network: http://192.168.0.212:5002
-- API: http://192.168.0.212:5001
+- Network: http://YOUR_LOCAL_IP:5002
+- API: http://YOUR_LOCAL_IP:5001
 
 **nginx Configuration:**
 ```nginx

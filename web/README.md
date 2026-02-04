@@ -9,11 +9,11 @@ Interactive graph visualization for your Neural Memory system.
 Access via your local network - no internet exposure:
 
 ```
-http://192.168.0.212:5002
+http://YOUR_LOCAL_IP:5002
 ```
 
 **Configuration:**
-- API Endpoint: `http://192.168.0.212:5001/sse2`
+- API Endpoint: `http://YOUR_LOCAL_IP:5001/sse2`
 - API Key: Get from your `.env` file
 
 ### Option 2: Internet Access (ngrok)
@@ -42,7 +42,7 @@ https://your-random-url.ngrok-free.app/viewer
 
 ### Localhost vs Internet
 
-**Localhost (192.168.0.212):**
+**Localhost (YOUR_LOCAL_IP):**
 - ✅ Secure by default
 - ✅ Fast (no internet latency)
 - ✅ Works offline
