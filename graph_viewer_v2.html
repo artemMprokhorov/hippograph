@@ -932,23 +932,9 @@
             // Show/hide weight legend
             document.getElementById('weightLegend').style.display = show ? 'block' : 'none';
             
-            // Update link colors
-            if (linkElements) {
-                if (show) {
-                    linkElements
-                        .attr('stroke', d => getWeightColor(d.weight || 0.5))
-                        .attr('stroke-opacity', d => getWeightOpacity(d.weight || 0.5))
-                        .attr('stroke-width', d => {
-                            const baseWidth = d.type === 'semantic' ? 2 : 1;
-                            return baseWidth + (d.weight || 0) * 2;
-                        });
-                } else {
-                    // Reset to default
-                    linkElements
-                        .attr('stroke', '#666')
-                        .attr('stroke-opacity', 0.3)
-                        .attr('stroke-width', d => d.type === 'semantic' ? 2 : 1);
-                }
+            // Re-render graph with new weight settings
+            if (filteredNodes.length > 0) {
+                renderGraph();
             }
         }
         
