@@ -329,6 +329,7 @@
         <div id="mainControls" style="display: none;">
         
         <button class="primary" onclick="loadFullGraph()">Load Full Graph</button>
+        <button class="secondary" onclick="refreshData()" style="margin-left: 10px; background: #4a9eff; color: white; border: 1px solid #6bb3ff;">🔄 Refresh Data</button>
         
         <div class="control-group">
             <label>Search</label>
@@ -560,6 +561,7 @@
                 const response = await fetch(`${API_URL}?api_key=${API_KEY}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    cache: 'no-store',
                     body: JSON.stringify({
                         jsonrpc: '2.0',
                         id: Date.now(),
@@ -575,6 +577,12 @@
                 console.error('API call failed:', error);
                 throw error;
             }
+        }
+        
+        // Refresh Data
+        async function refreshData() {
+            console.log('🔄 Refreshing data...');
+            await loadFullGraph();
         }
         
         // Load Full Graph
