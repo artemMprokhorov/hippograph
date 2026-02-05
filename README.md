@@ -326,11 +326,8 @@ This dual-licensing model allows free open-source access while reserving commerc
 
 ## 👥 Authors
 
-**Artem Prokhorov** — System architecture, infrastructure, research direction  
-**Claude** (Anthropic) — Co-developer, graph algorithms, documentation
+**Artem Prokhorov** — Creator and primary author
 
-*Built through human-AI collaboration*
+**Development approach:** This system emerged through intensive human-AI collaboration. Major architectural contributions—including graph-based spreading activation, entity extraction systems, and technical documentation—were developed iteratively with Claude (Anthropic).
 
----
-
-**Made with 🧠 by Artem Prokhorov & Claude**
+Built with 🧠 by Artem Prokhorov
