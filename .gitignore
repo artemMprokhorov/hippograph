@@ -49,3 +49,18 @@ ROADMAP_INTERNAL.md
 TODO.md
 NOTES.md
 SESSION_*.md
+
+# Backup files
+*.backup
+*.backup_*
+*.bak
+ROADMAP_*.backup*
+MIGRATION_PLAN_*.md
+
+# Temporary update/migration scripts
+update_*.py
+ROADMAP_UPDATE.py
+
+# Development artifacts
+graph_viewer.html
+scripts/import_export.py
