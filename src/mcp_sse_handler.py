@@ -10,8 +10,8 @@ import hashlib
 import hmac
 import os
 
-from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node
-from graph_engine import add_note_with_links, search_with_activation, search_with_activation_protected, get_node_graph
+from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node, get_note_history, restore_note_version
+from graph_engine import add_note_with_links, search_with_activation, get_node_graph, search_with_activation_protected, find_similar_notes
 from stable_embeddings import get_model
 
 # Authentication - use environment variable
@@ -151,6 +151,30 @@ def get_tools_list():
                 },
                 "required": ["content"]
             }
+        },
+        {
+            "name": "get_note_history",
+            "description": "Get version history for a note",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "integer"},
+                    "limit": {"type": "integer", "default": 5}
+                },
+                "required": ["note_id"]
+            }
+        },
+        {
+            "name": "restore_note_version",
+            "description": "Restore a note to a previous version",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "note_id": {"type": "integer"},
+                    "version_number": {"type": "integer"}
+                },
+                "required": ["note_id", "version_number"]
+            }
         }
     ]
 
@@ -176,7 +200,10 @@ def handle_tool_call(params):
             args.get("content", ""), 
             args.get("category", "general"),
             args.get("importance", "normal"),
-            args.get("force", False)
+            args.get("force", False),
+            args.get("emotional_tone", None),
+            args.get("emotional_intensity", 5),
+            args.get("emotional_reflection", None)
         )
     elif tool_name == "update_note":
         return tool_update_note(args.get("note_id"), args.get("content"), args.get("category"))
@@ -190,6 +217,11 @@ def handle_tool_call(params):
         return tool_set_importance(args.get("note_id"), args.get("importance"))
     elif tool_name == "find_similar":
         return tool_find_similar(args.get("content", ""), args.get("threshold", 0.7), args.get("limit", 5))
+    
+    elif tool_name == "get_note_history":
+        return tool_get_note_history(args.get("note_id"), args.get("limit", 5))
+    elif tool_name == "restore_note_version":
+        return tool_restore_note_version(args.get("note_id"), args.get("version_number"))
     
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
@@ -246,18 +278,16 @@ def tool_search_memory(query: str, limit: int, max_results: int = 10, detail_mod
             text = f"Found {len(results)} notes:\n\n"
             
         for r in results:
-            # Handle both brief and full modes
-            if "preview" in r:  # Brief mode
+            if "preview" in r:
                 text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
                 text += f"{r['preview']}\n"
                 if r['truncated']:
                     text += f"[...truncated, full length: {r['full_length']} chars]\n"
                 text += "\n"
-            else:  # Full mode
+            else:
                 text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
                 text += f"{r['content']}\n\n"
         
-        # Add metadata
         text += f"\n📊 Context Window Protection:\n"
         text += f"- Detail mode: {metadata['detail_mode']}\n"
         text += f"- Results returned: {metadata['returned']}\n"
@@ -447,3 +477,29 @@ def create_mcp_endpoint(app):
     @app.route("/health", methods=["GET"])
     def health():
         return jsonify({"status": "ok", "version": "2.0.0"})
+
+
+def tool_get_note_history(note_id: int, limit: int = 5):
+    """Get version history for a note"""
+    versions = get_note_history(note_id, limit)
+    if not versions:
+        return {"content": [{"type": "text", "text": f"No version history found for note #{note_id}"}]}
+    
+    text = f"📜 Version history for note #{note_id} ({len(versions)} versions):\n\n"
+    for v in versions:
+        preview = v["content"][:200] + "..." if len(v["content"]) > 200 else v["content"]
+        text += f"**Version {v['version_number']}** ({v['created_at']})\n"
+        text += f"  Category: {v['category']}, Importance: {v['importance']}\n"
+        text += f"  {preview}\n\n"
+    
+    return {"content": [{"type": "text", "text": text}]}
+
+
+def tool_restore_note_version(note_id: int, version_number: int):
+    """Restore a note to a previous version"""
+    success = restore_note_version(note_id, version_number)
+    
+    if not success:
+        return {"content": [{"type": "text", "text": f"❌ Version {version_number} not found for note #{note_id}, or restore failed"}]}
+    
+    return {"content": [{"type": "text", "text": f"✅ Note #{note_id} restored to version {version_number}. Current state saved as new version before restore."}]}
