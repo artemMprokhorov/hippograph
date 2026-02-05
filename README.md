@@ -180,6 +180,39 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 
 ---
 
+## 📥 Batch Import Skills
+
+For bulk knowledge import bypassing MCP overhead:
+
+```bash
+# 1. Prepare skills JSON
+cat > my_skills.json << 'EOF'
+[
+  {
+    "name": "skill-name",
+    "purpose": "What this skill does",
+    "category": "security-critical|development|ml-architecture",
+    "intensity": 7,
+    "tags": ["tag1", "tag2"]
+  }
+]
+EOF
+
+# 2. Import directly to database
+python3 scripts/add_skills.py my_skills.json
+
+# Output: ✅ Added: 15, Skipped: 2 (duplicates)
+```
+
+**Features:**
+- ✅ Direct SQLite write (no context window limits)
+- ✅ Automatic duplicate detection
+- ✅ Emotional context & entity extraction
+
+See [scripts/README.md](scripts/README.md) for full documentation.
+
+---
+
 ## 🏗️ Architecture
 
 ### Graph Database Schema
