@@ -581,3 +581,72 @@ MIT License - see [LICENSE](LICENSE)
 ---
 
 **Questions or suggestions?** Open an issue or discussion on GitHub!
+
+---
+
+## 🗑️ PRUNING & DELETION OPERATIONS (Enterprise Only)
+
+**Philosophy:** These operations are FOR ENTERPRISE use cases with 10K+ notes where performance requires aggressive cleanup. NOT for personal knowledge management where "keep all memories" principle applies.
+
+### Bulk Delete Operations
+**Use Case:** Large knowledge bases needing cleanup
+
+**Tasks:**
+- [ ] Delete edges below weight threshold
+- [ ] Delete orphan nodes (no connections)
+- [ ] Delete by time range (older than X)
+- [ ] Delete by category batch
+- [ ] Confirmation prompts + dry-run mode
+- [ ] Backup before bulk delete
+
+**Safety:**
+- Require explicit confirmation
+- Log all deletions
+- Create backup before operation
+- Provide rollback mechanism
+
+---
+
+### Context Window Trimming (Aggressive)
+**Use Case:** Very large graphs (5K+ nodes) where Top-K alone insufficient
+
+**Tasks:**
+- [ ] Smart chain trimming by removal (not just hiding)
+- [ ] Remove low-relevance branches from activation paths
+- [ ] Configurable relevance threshold for deletion
+- [ ] Keep only top N% of activated nodes permanently
+
+**Note:** Personal use should use Top-K + summarization instead
+
+---
+
+### Connection Pruning
+**Use Case:** Edge count explosion (100K+ edges)
+
+**Tasks:**
+- [ ] Delete weak connections (confidence < threshold)
+- [ ] Delete edges never co-activated in N days
+- [ ] Prune duplicate semantic links
+- [ ] Remove transitive edges when direct path exists
+
+**Alternative for Personal:** Use weight decay + dormant state (no deletion)
+
+---
+
+### Graph-Wide Rollback
+**Use Case:** Disaster recovery for enterprise deployments
+
+**Tasks:**
+- [ ] Snapshot entire graph state (nodes + edges + weights)
+- [ ] Point-in-time restoration
+- [ ] Differential backups (only changes since last snapshot)
+- [ ] Automated snapshot scheduling
+
+**Note:** Personal use has per-note versioning (sufficient for mistakes)
+
+---
+
+**Enterprise vs Personal:**
+- Personal: Natural decay, keep all memories, observability
+- Enterprise: Aggressive pruning, performance over completeness, deletion allowed
+
