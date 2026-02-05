@@ -67,3 +67,44 @@ Remove low-weight edges to optimize graph performance.
 
 ### backup.sh / restore.sh
 Database backup and restore utilities.
+
+### convert_to_json.py
+
+Convert SKILL.md files to JSON format for batch import with add_skills.py.
+
+**Usage:**
+```bash
+# Convert single file
+python3 convert_to_json.py skill.md -o output.json
+
+# Convert directory of skills
+python3 convert_to_json.py /path/to/skills/dir/ output.json
+
+# Convert multiple files
+python3 convert_to_json.py skill1.md skill2.md skill3.md -o output.json
+```
+
+**Expected SKILL.md Structure:**
+```markdown
+# skill-name
+
+## Purpose
+Brief description of what this skill does
+
+## When to use
+When to apply this skill (optional)
+
+## Tags
+security, code-review, testing
+```
+
+**Output:** JSON file ready for add_skills.py batch import
+
+**Workflow:**
+```bash
+# 1. Convert SKILL.md files to JSON
+python3 convert_to_json.py /mnt/skills/*.md -o skills.json
+
+# 2. Import to database
+python3 add_skills.py skills.json
+```
