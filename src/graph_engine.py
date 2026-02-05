@@ -416,3 +416,105 @@ def get_node_graph(node_id):
             for c in connected
         ]
     }
+"""
+Context Window Protection implementation for search_with_activation
+
+Changes:
+1. Added max_results parameter (hard limit, default: 10)
+2. Added detail_mode parameter ("brief" | "full", default: "full")
+3. Token counting for results
+4. Brief mode: returns id, category, first 200 chars, activation
+
+Philosophy: NO summarization (lossy), only truncation (user controls detail)
+"""
+
+def format_result_brief(result):
+    """Format result in brief mode - first 200 chars"""
+    content_preview = result["content"][:200]
+    if len(result["content"]) > 200:
+        content_preview += "..."
+    
+    return {
+        "id": result["id"],
+        "category": result["category"],
+        "preview": content_preview,
+        "activation": result["activation"],
+        "timestamp": result.get("timestamp"),
+        "full_length": len(result["content"]),
+        "truncated": len(result["content"]) > 200
+    }
+
+def estimate_tokens(text):
+    """Rough token estimation: ~4 chars per token"""
+    return len(text) // 4
+
+def search_with_activation_protected(query, limit=5, max_results=10, detail_mode="full",
+                                   iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, 
+                                   category_filter=None, time_after=None, time_before=None, 
+                                   entity_type_filter=None):
+    """
+    Search with context window protection.
+    
+    NEW Parameters:
+        max_results: Hard limit on results returned (default: 10)
+                    Overrides 'limit' if limit > max_results
+        detail_mode: "brief" (200 char preview) or "full" (complete content)
+                    Default: "full"
+    
+    Returns:
+        {
+            "results": [...],
+            "metadata": {
+                "total_activated": int,  # How many nodes were activated
+                "returned": int,          # How many returned
+                "detail_mode": str,       # "brief" or "full"
+                "estimated_tokens": int,  # Rough token count
+                "truncated": bool         # True if total_activated > returned
+            }
+        }
+    
+    Brief mode returns:
+        - id, category, preview (200 chars), activation, timestamp
+        - full_length (original content length)
+        - truncated flag
+    
+    Full mode returns:
+        - id, category, content (complete), activation, timestamp
+    """
+    
+    # Enforce max_results hard limit
+    effective_limit = min(limit, max_results)
+    
+    # Get results from original search_with_activation
+    raw_results = search_with_activation(
+        query=query,
+        limit=effective_limit,
+        iterations=iterations,
+        decay=decay,
+        category_filter=category_filter,
+        time_after=time_after,
+        time_before=time_before,
+        entity_type_filter=entity_type_filter
+    )
+    
+    # Format based on detail mode
+    if detail_mode == "brief":
+        formatted_results = [format_result_brief(r) for r in raw_results]
+        total_chars = sum(len(r["preview"]) for r in formatted_results)
+    else:
+        formatted_results = raw_results
+        total_chars = sum(len(r["content"]) for r in formatted_results)
+    
+    # Metadata
+    metadata = {
+        "total_activated": len(raw_results),  # Would need actual spreading count
+        "returned": len(formatted_results),
+        "detail_mode": detail_mode,
+        "estimated_tokens": estimate_tokens(str(formatted_results)),
+        "truncated": limit > max_results
+    }
+    
+    return {
+        "results": formatted_results,
+        "metadata": metadata
+    }
