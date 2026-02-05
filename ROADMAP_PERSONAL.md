@@ -98,10 +98,15 @@
 **Still Needed:**
 - [ ] MCP parameter: `max_tokens` (default: 4000)
 - [ ] Top-K truncation (return only N most activated nodes)
-- [ ] Summary mode (compress long content)
-- [ ] Progressive detail (brief first, full on request)
+- [ ] Progressive detail mode (brief summary first, full content on demand)
 
-**Philosophy:** ✅ Technical constraint, not memory deletion  
+**Philosophy:** ✅ Technical constraint, NOT information loss
+- Top-K: Returns fewer nodes, but complete information for each
+- Progressive: User controls detail level, nothing deleted
+- max_tokens: Hard limit to prevent overflow
+
+**What NOT to do:** Summarization/compression (loses meaning, emotional context, details)
+
 **Priority:** CRITICAL - system breaks without this as graph grows  
 **Estimated:** 3-4 hours
 

@@ -650,3 +650,17 @@ MIT License - see [LICENSE](LICENSE)
 - Personal: Natural decay, keep all memories, observability
 - Enterprise: Aggressive pruning, performance over completeness, deletion allowed
 
+
+### Content Summarization (Lossy Compression)
+**Use Case:** Extreme scale (50K+ nodes) where even Top-K insufficient
+
+**Tasks:**
+- [ ] AI-powered summarization of long content
+- [ ] Compress activation chains into summaries
+- [ ] Store both original + summary (fallback to full)
+- [ ] Configurable: summary-only mode vs hybrid
+
+**Warning:** Information loss! Emotional context, nuances, details disappear.
+
+**Alternative for Personal:** Use progressive detail (user chooses when to see full)
+
