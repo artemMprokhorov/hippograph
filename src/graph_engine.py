@@ -476,7 +476,7 @@ def search_with_activation_protected(query, limit=5, max_results=10, detail_mode
     NEW Parameters:
         max_results: Hard limit on results returned (default: 10)
                     Overrides 'limit' if limit > max_results
-        detail_mode: "brief" (200 char preview) or "full" (complete content)
+        detail_mode: "brief" (first line + metadata) or "full" (complete content)
                     Default: "full"
     
     Returns:
@@ -529,7 +529,7 @@ def search_with_activation_protected(query, limit=5, max_results=10, detail_mode
         "returned": len(formatted_results),
         "detail_mode": detail_mode,
         "estimated_tokens": estimate_tokens(str(formatted_results)),
-        "truncated": limit > max_results,
+        "truncated": total_activated > len(formatted_results),
         "has_more": total_activated > len(formatted_results)
     }
     

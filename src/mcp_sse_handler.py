@@ -69,7 +69,7 @@ def get_tools_list():
                     "time_before": {"type": "string", "description": "Optional: only return notes created before this datetime (ISO format: '2026-02-01T00:00:00')"},
                     "entity_type": {"type": "string", "description": "Optional: only return notes containing entities of this type (e.g., 'person', 'organization', 'concept', 'location', 'tech')"},
                     "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50, "description": "Hard limit on results (prevents context overflow)"},
-                    "detail_mode": {"type": "string", "enum": ["brief", "full"], "default": "full", "description": "brief: 200 char preview, full: complete content"}
+                    "detail_mode": {"type": "string", "enum": ["brief", "full"], "default": "full", "description": "brief: first line + metadata, full: complete content"}
                 },
                 "required": ["query"]
             }

@@ -93,31 +93,22 @@
 
 ---
 
-### 6. Context Window Protection ⏳ IN PROGRESS (75%)
-**Status:** Core implemented, refinements needed  
+### 6. Context Window Protection ✅ COMPLETE
+**Completed:** Feb 6, 2026  
 **Problem:** MCP returns full activation paths → Claude context overflow at ~500+ nodes
 
 **Implemented:**
 - [x] `max_results` parameter (hard limit, default: 10, Top-K truncation)
-- [x] `detail_mode` parameter ("brief" 200 chars / "full" complete content)
+- [x] `detail_mode` parameter ("brief" first line + metadata / "full" complete content)
 - [x] `estimate_tokens` (~4 chars per token rough estimation)
 - [x] Metadata with `truncated` flag
 - [x] `search_with_activation_protected()` in graph_engine.py
+- [x] Brief mode: first line + metadata (chars, lines, importance, emotional context)
+- [x] Fixed `total_activated`: shows real activated count before truncation
+- [x] Fixed `truncated` logic: `total_activated > returned` (was `limit > max_results`)
 
-**Still Needed:**
-- [ ] Improve brief mode: first line + metadata instead of arbitrary 200 char cut
-- [ ] Fix `total_activated`: show real activated count before truncation
-
-**Moved to Enterprise:**
-- `max_tokens` parameter (token budget) — not needed for personal use
-
-**Philosophy:** ✅ Technical constraint, NOT information loss
-- Top-K: Returns fewer nodes, but complete information for each
-- Progressive: User controls detail level, nothing deleted
-
-**What NOT to do:** Summarization/compression (loses meaning, emotional context, details)
-
-**Estimated:** 1-2 hours remaining
+**Success Metric:** ✅ Brief mode ~224 tokens for 3 results vs ~1500 for full mode
+**Files:** `src/graph_engine.py`, `src/mcp_sse_handler.py`
 
 ---
 
@@ -191,9 +182,9 @@
 - **Entities:** 990
 - **MCP Tools:** 10/10 verified
 - **Graph Viewer:** REST API loading all 593 nodes
-- **Completed:** 4/7 HIGH PRIORITY
-- **Next:** Context Window Protection refinements (#6)
+- **Completed:** 5/7 HIGH PRIORITY
+- **Next:** Retrieval Quality Testing (#5)
 
 ---
 
-**Last Updated:** Feb 5, 2026
+**Last Updated:** Feb 6, 2026
