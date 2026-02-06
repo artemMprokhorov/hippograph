@@ -1,124 +1,113 @@
-# Graph Viewer Security & Setup Guide
+# Graph Viewer - Setup & Usage
 
-## ⚠️ Important Security Notice
+## Overview
 
-The graph viewer (`graph_viewer_v2.html`) requires **API credentials** to connect to your Neural Memory server. **These credentials are NOT included in the repository** for security reasons.
+HippoGraph includes an interactive D3.js graph visualization accessible at `http://localhost:5002`.
 
-## 🔒 Security Principles
+The viewer loads **all nodes and edges** via a REST API endpoint, providing a complete visual map of your knowledge graph.
 
-1. **Local by Default**: The viewer connects to `localhost:5001` by default
-2. **No Credentials in Git**: Never commit API keys or ngrok URLs to the repository
-3. **Explicit Remote Access**: Remote access (via ngrok) must be explicitly configured by each user
-4. **Browser Storage Only**: Saved credentials are stored in your browser's localStorage, NOT in git
+## Architecture
 
-## 🚀 Quick Start (Local Network)
+```
+Browser (port 5002)
+    ↓
+  nginx (static files + API proxy)
+    ↓  /api/*
+  Flask (port 5000)
+    ↓
+  SQLite + Graph Cache
+```
 
-### Step 1: Start Your Server
+- **nginx** serves the HTML/JS viewer and proxies `/api/` requests to Flask
+- **Flask** provides REST endpoints for graph data
+- **No MCP needed** — viewer uses standard HTTP GET requests
+
+## Quick Start
+
+### 1. Start Server
 
 ```bash
-cd /path/to/hippograph
 docker-compose up -d
 ```
 
-Server will run on `http://localhost:5001`
+### 2. Open Viewer
 
-### Step 2: Get Your API Key
+Navigate to `http://localhost:5002` (or `http://<server-ip>:5002` on local network).
 
-Your API key is in `.env` file (not in git):
+### 3. Configure Connection
 
-```bash
-grep NEURAL_API_KEY .env
+Enter your API key from `.env` and click "Connect & Load".
+
+The viewer loads all nodes with brief previews. Click any node to see full content.
+
+## REST API Endpoints
+
+### GET /api/graph-data
+
+Returns all nodes and edges for visualization.
+
+**Parameters:**
+- `api_key` (required) — Your NEURAL_API_KEY
+- `brief` (optional, default: `true`) — Return truncated content (first line, max 200 chars)
+
+**Response:**
+```json
+{
+  "nodes": [
+    {
+      "id": 1,
+      "category": "self-reflection",
+      "importance": "normal",
+      "timestamp": "2026-01-22T...",
+      "emotional_tone": "curiosity",
+      "emotional_intensity": 6,
+      "preview": "First line of note content...",
+      "full_length": 1234
+    }
+  ],
+  "edges": [
+    {"source": 1, "target": 2, "weight": 0.75, "type": "semantic"}
+  ],
+  "stats": {"total_nodes": 593, "total_edges": 48108}
+}
 ```
 
-### Step 3: Open Graph Viewer
+### GET /api/node/<id>
 
-```bash
-open graph_viewer_v2.html
-```
+Returns full content for a single node (on-demand detail loading).
 
-### Step 4: Configure Connection
+**Parameters:**
+- `api_key` (required)
 
-When the viewer opens, you'll see a configuration panel:
-- **API Endpoint URL**: `http://localhost:5001/sse2`
-- **API Key**: Paste your key from `.env`
-- Click "Connect & Load"
+## Viewer Features
 
-The viewer will optionally save these credentials in your browser for convenience (never in git).
+- **D3.js force-directed layout** — Interactive graph with drag, zoom, pan
+- **Category color coding** — Visual distinction by note type
+- **Search** — Filter nodes by content
+- **Category filter** — Show specific categories
+- **Timeline slider** — Animate graph growth over time
+- **Link toggles** — Show/hide entity vs semantic connections
+- **Link weights** — Color-coded connection strength
+- **Node click** — Load full note content via REST API
+- **Performance** — Links capped at 5000 (top by weight) for browser performance
 
-## 🌐 Remote Access (Optional)
+## Security
 
-If you want to access your graph from outside your local network:
+- API key required for all REST endpoints
+- Credentials stored in browser localStorage only (7-day expiry)
+- Never committed to git
+- CSP headers restrict connections to known origins
+- See [SECURITY.md](SECURITY.md) for full details
 
-### Step 1: Setup ngrok (Already in Docker)
+## Troubleshooting
 
-Your server includes ngrok. Get your public URL:
+| Problem | Solution |
+|---------|----------|
+| "unauthorized" error | Check API key matches `.env` |
+| No nodes loaded | Verify server is healthy: `curl http://localhost:5001/health` |
+| Graph is slow | Normal for 40K+ edges; links auto-capped at 5000 |
+| CORS errors | Check nginx CSP in `nginx.conf` |
 
-```bash
-docker logs hippograph | grep "Forwarding"
-```
+---
 
-You'll see something like: `https://your-random-url.ngrok-free.app`
-
-### Step 2: Use Remote URL in Viewer
-
-In the configuration panel:
-- **API Endpoint URL**: `https://your-random-url.ngrok-free.app/sse2`
-- **API Key**: Your key from `.env`
-
-### Security Notes for Remote Access
-
-⚠️ **When using ngrok:**
-- Your graph is accessible from internet
-- API key is required (but transmitted over HTTPS)
-- Consider using strong, unique API keys
-- Rotate keys if exposed
-- Monitor access logs
-
-## 📝 For Other Users
-
-If someone clones this repository and wants to visualize their own graph:
-
-1. They must have their own Neural Memory server running
-2. They must generate their own API key
-3. They configure the viewer with their own credentials
-4. Their data never touches GitHub
-
-## 🔐 Best Practices
-
-### DO:
-✅ Keep API keys in `.env` file (in `.gitignore`)
-✅ Use `localhost` for local-only access
-✅ Generate strong API keys (see `MCP_CONNECTION.md`)
-✅ Rotate keys if accidentally exposed
-
-### DON'T:
-❌ Never commit `.env` files
-❌ Never hardcode credentials in HTML/JS
-❌ Never share your API key publicly
-❌ Never commit ngrok URLs to git
-
-## 🛠️ Troubleshooting
-
-### "Connection failed"
-- Check server is running: `docker ps`
-- Check API key is correct: `grep NEURAL_API_KEY .env`
-- Check URL format: `http://localhost:5001/sse2` (with `/sse2`)
-
-### "No nodes loaded"
-- Check Neural Memory has data: Open MCP and run `neural_stats`
-- Check browser console for errors (F12)
-
-### "CORS errors"
-- Only happens with remote URLs
-- Ensure server allows CORS from viewer origin
-
-## 📚 Related Documentation
-
-- `MCP_CONNECTION.md` - API key generation and MCP setup
-- `.env.example` - Environment variables template
-- `README.md` - Overall project setup
-
-## 🔄 Updates
-
-**Last Updated**: Feb 4, 2026  
-**Version**: 2.0 (Config-based, secure by default)
+**Last Updated:** Feb 5, 2026

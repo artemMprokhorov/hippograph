@@ -50,10 +50,15 @@
 - [x] Filter by category, entity type, search
 - [x] Real-time stats (nodes, edges, entities)
 - [x] Refresh button for live updates
+- [x] REST API endpoints (`/api/graph-data`, `/api/node/<id>`)
+- [x] Full graph loading (all 593 nodes via REST, not search)
+- [x] Click-to-detail (load full note content on demand)
+- [x] Performance cap (5000 links max for browser)
+- [x] Timeline animation with autoplay
 
-**Success Metric:** ✅ Can visually explore 591-node graph
-**URL:** http://192.168.0.212:5002  
-**Files:** `web/index.html`, `nginx.conf`
+**Success Metric:** ✅ Can visually explore full 593-node, 48K-edge graph
+**URL:** http://localhost:5002  
+**Files:** `web/index.html`, `nginx.conf`, `src/server.py`
 
 ---
 
@@ -73,7 +78,7 @@
 
 ---
 
-### 5. Retrieval Quality Testing ⏳ IN PROGRESS
+### 5. Retrieval Quality Testing ⏳ PLANNED
 **Status:** Not started  
 **Goal:** Measure and improve search relevance
 
@@ -88,27 +93,31 @@
 
 ---
 
-### 6. Context Window Protection ⭐⭐⭐ CRITICAL
-**Status:** Partially implemented (25% complete)  
+### 6. Context Window Protection ⏳ IN PROGRESS (75%)
+**Status:** Core implemented, refinements needed  
 **Problem:** MCP returns full activation paths → Claude context overflow at ~500+ nodes
 
-**Current State:**
-- [x] Token counting in search results
+**Implemented:**
+- [x] `max_results` parameter (hard limit, default: 10, Top-K truncation)
+- [x] `detail_mode` parameter ("brief" 200 chars / "full" complete content)
+- [x] `estimate_tokens` (~4 chars per token rough estimation)
+- [x] Metadata with `truncated` flag
+- [x] `search_with_activation_protected()` in graph_engine.py
 
 **Still Needed:**
-- [ ] MCP parameter: `max_tokens` (default: 4000)
-- [ ] Top-K truncation (return only N most activated nodes)
-- [ ] Progressive detail mode (brief summary first, full content on demand)
+- [ ] Improve brief mode: first line + metadata instead of arbitrary 200 char cut
+- [ ] Fix `total_activated`: show real activated count before truncation
+
+**Moved to Enterprise:**
+- `max_tokens` parameter (token budget) — not needed for personal use
 
 **Philosophy:** ✅ Technical constraint, NOT information loss
 - Top-K: Returns fewer nodes, but complete information for each
 - Progressive: User controls detail level, nothing deleted
-- max_tokens: Hard limit to prevent overflow
 
 **What NOT to do:** Summarization/compression (loses meaning, emotional context, details)
 
-**Priority:** CRITICAL - system breaks without this as graph grows  
-**Estimated:** 3-4 hours
+**Estimated:** 1-2 hours remaining
 
 ---
 
@@ -121,7 +130,6 @@
 - [ ] Uses same MCP endpoint (no new backend code)
 - [ ] Optional: Rich TUI for interactive browsing
 
-**Philosophy:** ✅ Accessibility improvement  
 **Estimated:** 2-3 hours
 
 ---
@@ -129,49 +137,22 @@
 ## 🎯 MEDIUM PRIORITY - Quality of Life
 
 ### Retrieval Quality Monitoring
-**Goal:** Observability for search performance
-
-**Tasks:**
 - [ ] Query logs (timestamp, query, results count, top activations)
 - [ ] Basic metrics: hit rate, avg results, latency
 - [ ] CSV export for analysis
-- [ ] Optional: Simple dashboard in web viewer
-
-**Philosophy:** ✅ Observability without changing core behavior  
-**Estimated:** 2-3 hours
-
----
 
 ### Connection Quality (Natural Patterns)
-**Goal:** Strengthen good connections, weaken unused ones (like real memory)
-
-**Tasks:**
 - [ ] Track activation frequency per edge
 - [ ] Automatic weight decay for unused connections
 - [ ] Boost frequently co-activated edges
 - [ ] "Dormant connection" state (very low weight, not deleted)
-- [ ] Confidence scores on edges (0.0-1.0)
-
-**Philosophy:** ✅ Natural strengthening/weakening through use, NO deletion  
-**Estimated:** 4-5 hours
-
----
 
 ### Batch Operations
 - [ ] Bulk add notes from JSON/markdown
 - [ ] Bulk update categories/importance
 
-**Note:** Bulk DELETE moved to ROADMAP_ENTERPRISE (not personal use)
-
----
-
-### Saved Searches
+### Saved Searches & Note Templates
 - [ ] Save frequent search queries with names
-- [ ] Quick access to saved searches
-
----
-
-### Note Templates
 - [ ] Session summary template
 - [ ] Breakthrough insight template
 
@@ -179,21 +160,15 @@
 
 ## ❌ OUT OF SCOPE - Personal Use
 
-**These belong in ROADMAP_ENTERPRISE:**
-
-### Moved to Enterprise
-- Bulk delete operations (delete edges < weight X, orphan nodes)
-- Graph-wide rollback (undo yesterday)
-- Context window trimming by deletion (use Top-K instead)
-- Smart chain trimming by removal (use summarization instead)
-- Weak connection deletion (use weight decay instead)
-
-### Never Implement
+**Moved to ROADMAP_ENTERPRISE.md:**
+- Bulk delete operations
+- Graph-wide rollback
+- Context window trimming by deletion
+- Smart chain trimming by removal
 - Multi-tenancy, user auth, permissions
-- GraphSAGE / Neo4j indices (overkill for <10k nodes)
-- PageRank normalization (current damping sufficient)
+- GraphSAGE / Neo4j indices
+- PageRank normalization
 - Horizontal scaling / sharding
-- Rate limiting
 
 ---
 
@@ -211,11 +186,13 @@
 
 ## 📊 Current Status (Feb 5, 2026)
 
-- **Nodes:** 591 (189 development skills, 14 security-critical)
-- **Edges:** 47,722 (45,226 entity, 2,496 semantic)
-- **Entities:** 982
-- **Commits:** 71bd7ce (latest: convert_to_json.py documentation)
-- **Next Priority:** Context Window Protection (#6) - CRITICAL
+- **Nodes:** 593 (189 development skills, 14 security-critical)
+- **Edges:** 48,108 (45,596 entity, 2,512 semantic)
+- **Entities:** 990
+- **MCP Tools:** 10/10 verified
+- **Graph Viewer:** REST API loading all 593 nodes
+- **Completed:** 4/7 HIGH PRIORITY
+- **Next:** Context Window Protection refinements (#6)
 
 ---
 

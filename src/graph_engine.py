@@ -382,14 +382,19 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             "content": node["content"],
             "category": node["category"],
             "activation": round(activation, 4),
-            "timestamp": node.get("timestamp")
+            "timestamp": node.get("timestamp"),
+            "importance": node.get("importance", "normal"),
+            "emotional_tone": node.get("emotional_tone"),
+            "emotional_intensity": node.get("emotional_intensity", 5)
         })
         
         # Stop when we have enough results
         if len(results) >= limit:
             break
     
-    return results
+    # Include total activated count for context awareness
+    total_activated = len(activations)
+    return results, total_activated
 
 
 def get_node_graph(node_id):
@@ -429,20 +434,33 @@ Philosophy: NO summarization (lossy), only truncation (user controls detail)
 """
 
 def format_result_brief(result):
-    """Format result in brief mode - first 200 chars"""
-    content_preview = result["content"][:200]
-    if len(result["content"]) > 200:
-        content_preview += "..."
+    """Format result in brief mode - first line + metadata for quick scanning"""
+    content = result["content"]
+    # Get first meaningful line (skip empty lines)
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    first_line = lines[0] if lines else content[:100]
+    # Cap at 150 chars
+    if len(first_line) > 150:
+        first_line = first_line[:147] + "..."
     
-    return {
+    brief = {
         "id": result["id"],
         "category": result["category"],
-        "preview": content_preview,
+        "first_line": first_line,
         "activation": result["activation"],
         "timestamp": result.get("timestamp"),
-        "full_length": len(result["content"]),
-        "truncated": len(result["content"]) > 200
+        "importance": result.get("importance", "normal"),
+        "full_length": len(content),
+        "total_lines": len(lines)
     }
+    
+    # Add emotional context if present
+    if result.get("emotional_tone"):
+        brief["emotional_tone"] = result["emotional_tone"]
+    if result.get("emotional_intensity") and result["emotional_intensity"] != 5:
+        brief["emotional_intensity"] = result["emotional_intensity"]
+    
+    return brief
 
 def estimate_tokens(text):
     """Rough token estimation: ~4 chars per token"""
@@ -486,7 +504,7 @@ def search_with_activation_protected(query, limit=5, max_results=10, detail_mode
     effective_limit = min(limit, max_results)
     
     # Get results from original search_with_activation
-    raw_results = search_with_activation(
+    raw_results, total_activated = search_with_activation(
         query=query,
         limit=effective_limit,
         iterations=iterations,
@@ -500,18 +518,19 @@ def search_with_activation_protected(query, limit=5, max_results=10, detail_mode
     # Format based on detail mode
     if detail_mode == "brief":
         formatted_results = [format_result_brief(r) for r in raw_results]
-        total_chars = sum(len(r["preview"]) for r in formatted_results)
+        total_chars = sum(len(r["first_line"]) for r in formatted_results)
     else:
         formatted_results = raw_results
         total_chars = sum(len(r["content"]) for r in formatted_results)
     
     # Metadata
     metadata = {
-        "total_activated": len(raw_results),  # Would need actual spreading count
+        "total_activated": total_activated,
         "returned": len(formatted_results),
         "detail_mode": detail_mode,
         "estimated_tokens": estimate_tokens(str(formatted_results)),
-        "truncated": limit > max_results
+        "truncated": limit > max_results,
+        "has_more": total_activated > len(formatted_results)
     }
     
     return {

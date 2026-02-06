@@ -51,16 +51,23 @@ NOTES.md
 SESSION_*.md
 
 # Backup files
+*.bak
+*.bak.*
+*.bak2
+*.bak3
+*.bak4
 *.backup
 *.backup_*
-*.bak
-ROADMAP_*.backup*
-MIGRATION_PLAN_*.md
+*_bck_*
+*.old
+*.orig
 
-# Temporary update/migration scripts
-update_*.py
-ROADMAP_UPDATE.py
+# Migration scripts (one-off)
+add_emotional_fields.py
+migrate_versioning.py
 
-# Development artifacts
-graph_viewer.html
-scripts/import_export.py
+# Deployment plans (internal)
+DEPLOYMENT_PLAN.md
+
+# Leaked key backups
+.env.backup_*

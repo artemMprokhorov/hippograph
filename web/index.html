@@ -587,116 +587,65 @@
             await loadFullGraph();
         }
         
-        // Load Full Graph
+        // Load Full Graph via REST API
         async function loadFullGraph() {
             document.getElementById('stats').innerHTML = '<div class="stat">⏳ Loading full graph...</div>';
             
             try {
-                // Get stats
-                const stats = await callAPI('neural_stats');
-                const statsText = stats.content[0].text;
-                const totalNodes = parseInt(statsText.match(/Total nodes: (\d+)/)[1]);
-                const totalEdges = parseInt(statsText.match(/Total edges: (\d+)/)[1]);
-                const totalEntities = parseInt(statsText.match(/Total entities: (\d+)/)[1]);
+                // Use REST API endpoint (proxied through nginx /api/)
+                const apiBase = window.location.origin;
+                const response = await fetch(`${apiBase}/api/graph-data?api_key=${API_KEY}&brief=true`, {
+                    cache: 'no-store'
+                });
                 
-                // Load nodes in batches using search
-                const batchSize = 20;
-                const queries = [
-                    'consciousness memory identity',
-                    'breakthrough milestone session',
-                    'technical debugging deployment',
-                    'self-reflection emotional growth',
-                    'project roadmap features',
-                    'critical knowledge protocol',
-                    'observations insights learning',
-                    'security API implementation'
-                ];
-                
-                const nodeMap = new Map();
-                let loadedCount = 0;
-                
-                for (const query of queries) {
-                    const results = await callAPI('search_memory', {
-                        query: query,
-                        limit: batchSize
-                    });
-                    
-                    // Parse results
-                    const blocks = results.content[0].text.split('\n\n');
-                    for (const block of blocks) {
-                        const match = block.match(/\[ID:(\d+)\] \[([^\]]+)\]/);
-                        if (match && !nodeMap.has(match[1])) {
-                            const id = match[1];
-                            const category = match[2];
-                            const lines = block.split('\n');
-                            const content = lines.slice(1).join(' ').trim().substring(0, 200);
-                            
-                            nodeMap.set(id, {
-                                id: id,
-                                category: category,
-                                content: content,
-                                label: `#${id}`
-                            });
-                            loadedCount++;
-                        }
-                    }
-                    
-                    // Update progress
-                    document.getElementById('stats').innerHTML = 
-                        `<div class="stat">⏳ Loaded ${loadedCount} nodes...</div>`;
+                if (!response.ok) {
+                    if (response.status === 401) throw new Error('Invalid API key');
+                    throw new Error(`HTTP ${response.status}`);
                 }
+                
+                const data = await response.json();
+                
+                // Build node map
+                const nodeMap = new Map();
+                data.nodes.forEach(n => {
+                    nodeMap.set(String(n.id), {
+                        id: String(n.id),
+                        category: n.category || 'general',
+                        content: n.preview || n.content || '',
+                        label: `#${n.id}`,
+                        importance: n.importance || 'normal',
+                        emotional_tone: n.emotional_tone || '',
+                        emotional_intensity: n.emotional_intensity || 0,
+                        timestamp: n.timestamp || '',
+                        full_length: n.full_length || 0
+                    });
+                });
                 
                 allNodes = Array.from(nodeMap.values());
                 
-                // Build links from get_graph calls for sample nodes
+                // Build links (only for nodes we have)
                 allLinks = [];
-                const sampleSize = Math.min(30, allNodes.length);
-                
-                console.log('Building links from', sampleSize, 'sample nodes...');
-                
-                for (let i = 0; i < sampleSize; i++) {
-                    const node = allNodes[i];
-                    try {
-                        const graphData = await callAPI('get_graph', { note_id: parseInt(node.id) });
-                        const connections = graphData.content[0].text;
-                        
-                        // Parse connections - two formats:
-                        // Format 1: → [entity] (weight: 0.60) #12: ...
-                        // Format 2: → [semantic] (weight: 0.52) #246: ...
-                        const lines = connections.split('\n');
-                        for (const line of lines) {
-                            const match = line.match(/→ \[(\w+)\] \(weight: ([\d.]+)\).*?#(\d+):/);
-                            if (match) {
-                                const linkType = match[1];
-                                const weight = parseFloat(match[2]);
-                                const targetId = match[3];
-                                
-                                if (nodeMap.has(targetId)) {
-                                    allLinks.push({
-                                        source: node.id,
-                                        target: targetId,
-                                        type: linkType,
-                                        weight: weight
-                                    });
-                                    if (i === 0) {
-                                        console.log('Sample link:', { linkType, weight, source: node.id, target: targetId });
-                                    }
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // Skip if get_graph fails
+                let skippedLinks = 0;
+                data.edges.forEach(e => {
+                    const sourceId = String(e.source);
+                    const targetId = String(e.target);
+                    if (nodeMap.has(sourceId) && nodeMap.has(targetId)) {
+                        allLinks.push({
+                            source: sourceId,
+                            target: targetId,
+                            type: e.type || 'semantic',
+                            weight: e.weight || 0.5
+                        });
+                    } else {
+                        skippedLinks++;
                     }
-                }
+                });
                 
-                console.log('Total links created:', allLinks.length);
-                console.log('Sample links:', allLinks.slice(0, 3));
-                
-                // Update stats display
+                // Update stats
                 document.getElementById('stats').innerHTML = `
-                    <div class="stat"><strong>Total:</strong> ${totalNodes} nodes, ${totalEdges} edges</div>
+                    <div class="stat"><strong>Total DB:</strong> ${data.stats.total_nodes} nodes, ${data.stats.total_edges} edges</div>
                     <div class="stat"><strong>Loaded:</strong> ${allNodes.length} nodes, ${allLinks.length} links</div>
-                    <div class="stat"><strong>Entities:</strong> ${totalEntities}</div>
+                    <div class="stat"><strong>Note:</strong> Graph shows all nodes. Click a node to see details.</div>
                 `;
                 
                 // Build category filter
@@ -716,12 +665,31 @@
                 // Setup timeline
                 setupTimeline();
                 
+                // For large graphs, limit rendered links to keep performance
+                if (allLinks.length > 5000) {
+                    console.log(`Large graph: ${allLinks.length} links, filtering to top weighted`);
+                    allLinks.sort((a, b) => (b.weight || 0) - (a.weight || 0));
+                    allLinks = allLinks.slice(0, 5000);
+                }
+                
                 // Initial render
                 applyFilters();
                 
             } catch (error) {
                 document.getElementById('stats').innerHTML = 
-                    `<div class="stat" style="border-left-color: #ff006e;">❌ Error: ${error.message}</div>`;
+                    `<div class="stat" style="border-left-color: #ff006e;">❌ Error: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+        
+        // Fetch full node content on click
+        async function fetchNodeDetail(nodeId) {
+            try {
+                const apiBase = window.location.origin;
+                const response = await fetch(`${apiBase}/api/node/${nodeId}?api_key=${API_KEY}`);
+                if (!response.ok) return null;
+                return await response.json();
+            } catch (e) {
+                return null;
             }
         }
         
@@ -941,16 +909,40 @@
             linkElements.classed('highlighted', false);
         }
         
-        function showNodeInfo(node) {
+        async function showNodeInfo(node) {
             const safeId = escapeHtml(node.id);
             const safeCategory = escapeHtml(node.category);
             const safeContent = escapeHtml(node.content);
+            const safeTone = escapeHtml(node.emotional_tone || '');
+            const importance = escapeHtml(node.importance || 'normal');
+            
+            // Show preview immediately
+            let meta = '';
+            if (importance !== 'normal') meta += `<div class="stat"><strong>Importance:</strong> ${importance}</div>`;
+            if (safeTone) meta += `<div class="stat"><strong>Tone:</strong> ${safeTone}</div>`;
+            if (node.emotional_intensity > 0) meta += `<div class="stat"><strong>Intensity:</strong> ${node.emotional_intensity}/10</div>`;
             
             document.getElementById('nodeInfo').innerHTML = `
                 <h3 style="margin-top: 20px; font-size: 14px;">Node #${safeId}</h3>
                 <div class="stat"><strong>Category:</strong> ${safeCategory}</div>
-                <div class="stat" style="line-height: 1.4; white-space: pre-wrap;">${safeContent}...</div>
+                ${meta}
+                <div class="stat" style="line-height: 1.4; white-space: pre-wrap;">${safeContent}</div>
+                <div class="stat" style="color: #666; font-size: 11px;">Loading full content...</div>
             `;
+            
+            // Fetch full content
+            const detail = await fetchNodeDetail(node.id);
+            if (detail) {
+                const fullContent = escapeHtml(detail.content || '');
+                const timestamp = escapeHtml(detail.timestamp || '');
+                document.getElementById('nodeInfo').innerHTML = `
+                    <h3 style="margin-top: 20px; font-size: 14px;">Node #${safeId}</h3>
+                    <div class="stat"><strong>Category:</strong> ${safeCategory}</div>
+                    ${meta}
+                    <div class="stat" style="font-size: 11px;"><strong>Created:</strong> ${timestamp}</div>
+                    <div class="stat" style="line-height: 1.4; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">${fullContent}</div>
+                `;
+            }
         }
         
         function showLinkInfo(event, link) {

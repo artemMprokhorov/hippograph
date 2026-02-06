@@ -22,18 +22,11 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
 
-**Interactive Web Visualization:**
-<p align="center">
-  <img src="docs/images/graph-viewer-demo.png" width="600" alt="Graph Viewer Demo">
-</p>
-
-- 🌐 **Real-time Graph Explorer** — Interactive D3.js visualization of your knowledge graph
-- 🎨 **Color-Coded Categories** — Visual distinction between note types (milestones, breakthroughs, reflections)
-- 🔍 **Smart Filters** — Filter by category, time range, link types (entity/semantic)
-- 📈 **Link Weight Visualization** — Gradient colors show connection strength (gray → bright blue)
-- ⏱️ **Timeline Playback** — Watch your knowledge base grow over time with autoplay
-- 🖱️ **Interactive Exploration** — Click nodes for details, click links to see weights
-- 🔐 **Secure Access** — Config UI for API credentials, no hardcoded keys
+**Graph Visualization:**
+- 🌐 **Interactive Graph Viewer** — D3.js force-directed layout at `http://localhost:5002`
+- 🎨 **Category Color Coding** — Visual distinction by note type
+- ⏱️ **Timeline Animation** — Watch your knowledge graph grow over time
+- 🔍 **Click-to-Detail** — Load full note content on demand
 
 **Technical Features:**
 - 384-dimensional semantic embeddings (all-MiniLM-L6-v2)
@@ -44,8 +37,6 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
 - **spaCy NER** for advanced entity extraction (people, organizations, locations)
-- **Web Viewer** — nginx-served interactive visualization (port 5002)
-- **Security-hardened** — XSS protection, CSP headers, input validation
 - Docker-ready deployment
 
 ---
@@ -87,37 +78,16 @@ The server will:
 - Download embedding models (~2GB on first run)
 - Download spaCy model for entity extraction  
 - Initialize SQLite database
-- Start API on `http://localhost:5001`
-- Start Web Viewer on `http://localhost:5002`
+- Start on `http://localhost:5000`
 
-### 3. Access Web Viewer
-
-Open your browser:
-```
-http://localhost:5002
-```
-
-**First-time setup:**
-1. Enter API endpoint: `http://localhost:5001/sse2`
-2. Enter API key from your `.env` file
-3. Click "Connect and Load Graph"
-4. Explore your knowledge graph! 🎨
-
-**Features:**
-- Drag nodes to rearrange
-- Zoom and pan
-- Click nodes for details
-- Toggle filters and visualizations
-- Use timeline to see growth over time
-
-### 4. Verify Installation
+### 3. Verify Installation
 
 ```bash
-curl http://localhost:5001/health
+curl http://localhost:5000/health
 # Expected: {"status": "ok", "version": "2.0.0"}
 ```
 
-### 5. Setup Remote Access (Optional)
+### 4. Setup Remote Access (Optional)
 
 For Claude.ai integration or remote use, you need a public HTTPS URL.  
 See [Setup Guide](docs/SETUP_GUIDE.md) for options:
@@ -177,39 +147,16 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 | `find_similar` | Check for similar notes before adding (deduplication) |
 | `neural_stats` | View memory statistics and graph metrics |
 | `get_graph` | Get connections for a specific note |
+| `get_note_history` | View version history for a note |
+| `restore_note_version` | Restore note to a previous version |
 
----
+### REST API (Graph Viewer)
 
-## 📥 Batch Import Skills
-
-For bulk knowledge import bypassing MCP overhead:
-
-```bash
-# 1. Prepare skills JSON
-cat > my_skills.json << 'EOF'
-[
-  {
-    "name": "skill-name",
-    "purpose": "What this skill does",
-    "category": "security-critical|development|ml-architecture",
-    "intensity": 7,
-    "tags": ["tag1", "tag2"]
-  }
-]
-EOF
-
-# 2. Import directly to database
-python3 scripts/add_skills.py my_skills.json
-
-# Output: ✅ Added: 15, Skipped: 2 (duplicates)
-```
-
-**Features:**
-- ✅ Direct SQLite write (no context window limits)
-- ✅ Automatic duplicate detection
-- ✅ Emotional context & entity extraction
-
-See [scripts/README.md](scripts/README.md) for full documentation.
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/graph-data` | All nodes and edges for visualization |
+| `GET /api/node/<id>` | Full content for a single node |
+| `GET /health` | Server health check |
 
 ---
 
@@ -228,6 +175,11 @@ edges (connections)
 ├── source_id → target_id
 ├── weight, edge_type
 └── created_at
+
+note_versions (history)
+├── note_id, version_number
+├── content snapshot
+└── last 5 versions kept
 
 entities (extracted concepts)
 ├── name, entity_type
@@ -321,6 +273,8 @@ hippograph/
 │   ├── backup.sh              # Database backup
 │   ├── restore.sh             # Database restore
 │   └── recompute_embeddings.py
+├── web/
+│   └── index.html             # D3.js graph viewer
 ├── docs/                      # Documentation
 ├── docker-compose.yml
 ├── Dockerfile
@@ -342,25 +296,19 @@ Contributions welcome! This project explores semantic memory systems and knowled
 
 ---
 
-## 📄 Licensing
+## 📄 License
 
-This project is dual-licensed:
-
-- Open-source / personal / non-commercial use: MIT License  
-  See the <LICENSE> file for full terms.
-- Commercial use, SaaS integration, proprietary redistribution, closed-source derivative works, or any use that does not comply with MIT terms: requires a separate commercial license.  
-  Contact: [system.uid@gmail.com] for pricing, terms, and licensing agreement.
-
-If you plan to use this software in a product, service, internal enterprise deployment, or any context where MIT obligations (copyright notice preservation, etc.) are undesirable or incompatible, obtain explicit written permission via commercial license before proceeding.
-
-This dual-licensing model allows free open-source access while reserving commercial rights to the original author.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
 ## 👥 Authors
 
-**Artem Prokhorov** — Creator and primary author
+**Artem Prokhorov** — System architecture, infrastructure, research direction  
+**Claude** (Anthropic) — Co-developer, graph algorithms, documentation
 
-**Development approach:** This system emerged through intensive human-AI collaboration. Major architectural contributions—including graph-based spreading activation, entity extraction systems, and technical documentation—were developed iteratively with Claude (Anthropic).
+*Built through human-AI collaboration*
 
-Built with 🧠 by Artem Prokhorov
+---
+
+**Made with 🧠 by Artem Prokhorov & Claude**

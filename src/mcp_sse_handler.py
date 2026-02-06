@@ -278,20 +278,25 @@ def tool_search_memory(query: str, limit: int, max_results: int = 10, detail_mod
             text = f"Found {len(results)} notes:\n\n"
             
         for r in results:
-            if "preview" in r:
-                text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
-                text += f"{r['preview']}\n"
-                if r['truncated']:
-                    text += f"[...truncated, full length: {r['full_length']} chars]\n"
-                text += "\n"
+            if "first_line" in r:
+                # Brief mode
+                importance_tag = f" ⭐{r['importance']}" if r.get('importance') != 'normal' else ""
+                emotion_tag = f" 💭{r['emotional_tone']}" if r.get('emotional_tone') else ""
+                text += f"[ID:{r['id']}] [{r['category']}]{importance_tag}{emotion_tag} (activation: {r['activation']})\n"
+                text += f"  {r['first_line']}\n"
+                text += f"  [{r['full_length']} chars, {r['total_lines']} lines]\n\n"
             else:
+                # Full mode
                 text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
                 text += f"{r['content']}\n\n"
         
         text += f"\n📊 Context Window Protection:\n"
         text += f"- Detail mode: {metadata['detail_mode']}\n"
         text += f"- Results returned: {metadata['returned']}\n"
+        text += f"- Total activated: {metadata['total_activated']}\n"
         text += f"- Estimated tokens: ~{metadata['estimated_tokens']}\n"
+        if metadata.get('has_more'):
+            text += f"💡 More results available (increase limit to see more)\n"
         if metadata.get('truncated'):
             text += f"⚠️ Truncated: requested limit > max_results\n"
     
