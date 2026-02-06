@@ -68,22 +68,22 @@ def importance_factor(importance, access_count=0):
     Calculate importance multiplier for activation.
     
     Base factors:
-    - critical: 2.0x (anchor notes, identity, key decisions)
+    - critical: 1.5x (anchor notes, identity, key decisions)
     - normal: 1.0x (default)
-    - low: 0.5x (temporary, noise)
+    - low: 0.7x (temporary, noise)
     
     Also applies small boost for frequently accessed notes.
     """
     base_factors = {
-        'critical': 2.0,
+        'critical': 1.5,
         'normal': 1.0,
-        'low': 0.5
+        'low': 0.7
     }
     base = base_factors.get(importance, 1.0)
     
-    # Small boost for frequently accessed notes (max +50%)
-    # access_count of 10 gives +25%, 20 gives +50%
-    access_boost = min(0.5, (access_count or 0) * 0.025)
+    # Small boost for frequently accessed notes (max +20%)
+    # access_count of 10 gives +10%, 20 gives +20%
+    access_boost = min(0.2, (access_count or 0) * 0.01)
     
     return base + access_boost
 
