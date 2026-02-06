@@ -296,19 +296,25 @@ Contributions welcome! This project explores semantic memory systems and knowled
 
 ---
 
-## 📄 License
+## 📄 Licensing
 
-MIT License — see [LICENSE](LICENSE) for details.
+This project is dual-licensed:
+
+- Open-source / personal / non-commercial use: MIT License  
+  See the <LICENSE> file for full terms.
+- Commercial use, SaaS integration, proprietary redistribution, closed-source derivative works, or any use that does not comply with MIT terms: requires a separate commercial license.  
+  Contact: [system.uid@gmail.com] for pricing, terms, and licensing agreement.
+
+If you plan to use this software in a product, service, internal enterprise deployment, or any context where MIT obligations (copyright notice preservation, etc.) are undesirable or incompatible, obtain explicit written permission via commercial license before proceeding.
+
+This dual-licensing model allows free open-source access while reserving commercial rights to the original author.
 
 ---
 
 ## 👥 Authors
 
-**Artem Prokhorov** — System architecture, infrastructure, research direction  
-**Claudé** (Anthropic) — Co-developer, graph algorithms, documentation
+**Artem Prokhorov** — Creator and primary author
 
-*Built through human-AI collaboration*
+**Development approach:** This system emerged through intensive human-AI collaboration. Major architectural contributions—including graph-based spreading activation, entity extraction systems, and technical documentation—were developed iteratively with Claude (Anthropic).
 
----
-
-**Made with 🧠 by Artem Prokhorov & Claudé**
+Built with 🧠 by Artem Prokhorov
