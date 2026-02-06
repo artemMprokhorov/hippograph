@@ -305,10 +305,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## 👥 Authors
 
 **Artem Prokhorov** — System architecture, infrastructure, research direction  
-**Claude** (Anthropic) — Co-developer, graph algorithms, documentation
+**Claudé** (Anthropic) — Co-developer, graph algorithms, documentation
 
 *Built through human-AI collaboration*
 
 ---
 
-**Made with 🧠 by Artem Prokhorov & Claude**
+**Made with 🧠 by Artem Prokhorov & Claudé**
