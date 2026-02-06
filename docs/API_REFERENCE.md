@@ -22,13 +22,19 @@ curl -H "Authorization: Bearer YOUR_KEY" http://localhost:5001/sse ...
 
 ### search_memory
 
-Search through notes using spreading activation algorithm.
+Search through notes using spreading activation algorithm with context window protection.
 
 **Parameters:**
 | Name | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | query | string | yes | - | Search query |
 | limit | integer | no | 5 | Max results (1-20) |
+| max_results | integer | no | 10 | Hard limit on results (prevents context overflow) |
+| detail_mode | string | no | "full" | "brief" (first line + metadata) or "full" (complete content) |
+| category | string | no | - | Filter by category (e.g., "breakthrough", "technical") |
+| time_after | string | no | - | Only notes after this datetime (ISO format) |
+| time_before | string | no | - | Only notes before this datetime (ISO format) |
+| entity_type | string | no | - | Only notes with entities of this type (e.g., "person", "tech") |
 
 **Example:**
 ```json
@@ -38,11 +44,19 @@ Search through notes using spreading activation algorithm.
     "name": "search_memory",
     "arguments": {
       "query": "machine learning projects",
-      "limit": 10
+      "limit": 5,
+      "detail_mode": "brief",
+      "category": "technical"
     }
   }
 }
 ```
+
+**Response includes metadata:**
+- `total_activated` — total nodes activated by spreading activation
+- `returned` — number of results returned
+- `estimated_tokens` — approximate token count for context budgeting
+- `has_more` — whether more results are available
 
 ---
 
@@ -55,6 +69,11 @@ Add new note with automatic entity extraction and linking.
 |------|------|----------|---------|-------------|
 | content | string | yes | - | Note content |
 | category | string | no | "general" | Category tag |
+| importance | string | no | "normal" | "critical", "normal", or "low" — affects search ranking |
+| force | boolean | no | false | Force add even if duplicate detected (>95% similarity) |
+| emotional_tone | string | no | - | Keywords describing emotional context (e.g., "joy, pride") |
+| emotional_intensity | integer | no | 5 | Emotional intensity 0-10 |
+| emotional_reflection | string | no | - | Narrative reflection on emotional context |
 
 **Example:**
 ```json

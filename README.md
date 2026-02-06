@@ -36,7 +36,10 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Temporal decay** for recency-weighted search
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
+- **Context window protection** — brief/full detail modes, token estimation, progressive loading
+- **Note versioning** — auto-save history, restore previous versions
 - **spaCy NER** for advanced entity extraction (people, organizations, locations)
+- **Graph visualization** — D3.js interactive viewer with REST API
 - Docker-ready deployment
 
 ---
@@ -139,7 +142,7 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 
 | Tool | Description |
 |------|-------------|
-| `search_memory` | Semantic search with spreading activation |
+| `search_memory` | Semantic search with spreading activation. Supports `detail_mode` (brief/full), `max_results` limit, category/time/entity filters |
 | `add_note` | Save note with auto-embedding, entity extraction, and duplicate detection |
 | `update_note` | Modify existing note, recompute connections |
 | `delete_note` | Remove note and its graph relationships |
