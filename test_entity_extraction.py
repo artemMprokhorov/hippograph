@@ -9,7 +9,7 @@ sys.path.insert(0, 'src')
 from entity_extractor import extract_entities_regex, extract_entities_spacy
 
 test_texts = [
-    "Working with Artem Prokhorov on neural memory project using Python and Docker",
+    "Working with Alice on knowledge graph project using Python and Docker",
     "Anthropic released Claude 4.5 with improved reasoning capabilities",
     "Building knowledge graphs with spaCy for entity extraction in Santiago, Chile",
     "The neural network optimization project started in December 2025",

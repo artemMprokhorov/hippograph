@@ -38,10 +38,9 @@ python3 add_skills.py skills.json [--db /path/to/memory.db]
 
 **Example:**
 ```bash
-# On server (Mac Studio)
-ssh -i ~/.ssh/studio_key user@192.168.0.212
-cd /Volumes/Balances/semantic-memory-v2/scripts
-python3 add_skills.py /Volumes/Balances/skills/all_skills.json
+# Run from project root
+cd scripts
+python3 add_skills.py ../skills/all_skills.json
 ```
 
 **Output:**

@@ -263,23 +263,23 @@ Notes are automatically analyzed to extract entities (people, organizations, loc
 
 **Input Note:**
 ```
-Artem works at Scotiabank Chile in Santiago. 
-He's developing neural-memory-graph using Python and Docker.
+Alice works at TechCorp in Berlin. 
+She's developing a knowledge graph using Python and Docker.
 ```
 
 **Extracted Entities:**
 ```
-- Artem Prokhorov → person
-- Scotiabank Chile → organization
-- Santiago → location
+- Alice → person
+- TechCorp → organization
+- Berlin → location
 - Python → tech (from KNOWN_ENTITIES)
 - Docker → tech (from KNOWN_ENTITIES)
-- memory → concept
+- knowledge → concept
 - graph → concept
 ```
 
 **Graph Connections Created:**
 - All notes mentioning "Python" are linked
-- All notes about "Scotiabank Chile" connect
-- Geographic notes about "Santiago" cluster together
+- All notes about "TechCorp" connect
+- Geographic notes about "Berlin" cluster together
 

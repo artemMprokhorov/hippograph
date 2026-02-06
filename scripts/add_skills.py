@@ -11,7 +11,7 @@ import json
 import sys
 from datetime import datetime
 
-DEFAULT_DB = "/Volumes/Balances/semantic-memory-v2/data/memory.db"
+DEFAULT_DB = "./data/memory.db"
 
 def format_skill_content(skill):
     """Format skill data as memory content"""

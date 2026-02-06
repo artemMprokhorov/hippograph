@@ -60,7 +60,7 @@ class TestSearchQuality:
     def test_search_finds_exact_match(self):
         """Test that search finds exact text matches"""
         # Would require test database with known content
-        query = "consciousness research"
+        query = "knowledge management"
         
         # Placeholder - real test would call search_with_activation
         assert True

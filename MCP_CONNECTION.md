@@ -1,43 +1,50 @@
-# MCP Connection Configuration
+# MCP Connection Guide
 
-## Current Setup (Updated: Feb 3-4, 2026)
+## API Key Setup
 
-### API Key
-**Location:** Server only (`/Volumes/Balances/semantic-memory-v2/.env`)  
+**Location:** Server only (`.env` file, never committed to git)  
 **Format:** `NEURAL_API_KEY=your_secure_key_here`  
-**Note:** NEVER commit API keys to git - get from server .env file
 
-### MCP Endpoint
+## Connection URL Format
+
 ```
-https://grand-beagle-reliably.ngrok-free.app/sse2?api_key=[INSERT_KEY_HERE]
+https://your-domain.com/sse2?api_key=YOUR_API_KEY
 ```
 
-### Server Details
-- **Local:** http://YOUR_LOCAL_IP:5001
-- **SSH:** `ssh -i ~/.ssh/studio_key YOUR_USERNAME@YOUR_LOCAL_IP`
-- **Docker:** `/usr/local/bin/docker-compose` in `/Volumes/Balances/semantic-memory-v2/`
+Replace `your-domain.com` with your actual reverse proxy URL (ngrok, Cloudflare Tunnel, or custom).
 
-### Available Tools (10)
-1. search_memory
-2. add_note
-3. update_note
-4. delete_note
-5. neural_stats
-6. get_graph
-7. set_importance
-8. find_similar
-9. get_note_history ✨ NEW
-10. restore_note_version ✨ NEW
+## Key Management
 
-### Security Notes
-- Old key `neural_secure_key_2026_v2` was leaked briefly (Jan 26, 2026) and deactivated
-- Current key deployed Feb 3-4, 2026
-- All SESSION_*.md files in .gitignore
-- Never commit .env or keys to repository
+### Generating a New Key
 
-### Testing Connection
 ```bash
-curl -s "https://grand-beagle-reliably.ngrok-free.app/sse2?api_key=[KEY]" \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}'
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
+
+### Key Requirements
+- Minimum 32 characters
+- Alphanumeric + symbols
+- Unique per deployment
+- Stored only in `.env` (which is in `.gitignore`)
+
+### Key Rotation
+
+1. Generate new key
+2. Update `.env` on server
+3. Restart container: `docker-compose down && docker-compose up -d`
+4. Update MCP connection in Claude.ai settings
+
+## Testing Connection
+
+```bash
+curl -s "https://your-domain.com/sse2?api_key=YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"method":"tools/list"}'
+```
+
+## Security Notes
+
+- Never commit API keys to git
+- Use HTTPS only for remote access
+- Rotate keys if accidentally exposed
+- See [SECURITY.md](SECURITY.md) for full security guide

@@ -10,7 +10,7 @@ os.environ["ENTITY_EXTRACTOR"] = "spacy"
 from entity_extractor import extract_entities_with_confidence
 
 test_texts = [
-    "Artem Prokhorov works at Scotiabank Chile in Santiago",
+    "Alice Johnson works at TechCorp in Berlin",
     "Apple released new iPhone in California last week",
     "The research was published in Nature on January 15th",
     "President Biden met with Angela Merkel in Berlin",

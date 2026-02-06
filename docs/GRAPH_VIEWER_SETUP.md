@@ -79,7 +79,7 @@ docker-compose up -d
 
 # Get your ngrok URL
 docker logs hippograph | grep "Internet:"
-# Output: - Internet: https://grand-beagle-reliably.ngrok-free.app
+# Output: - Internet: https://your-domain.ngrok-free.app
 ```
 
 **Configuration:**
@@ -165,7 +165,7 @@ docker-compose up -d
 2. **Get API Key:**
 ```bash
 grep NEURAL_API_KEY .env
-# Output: NEURAL_API_KEY=neuralv4_...
+# Output: NEURAL_API_KEY=your_key_here
 ```
 
 3. **Open Viewer:**

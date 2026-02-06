@@ -42,10 +42,10 @@ Tracks progression of related notes over time.
 ### 3. Conceptual Hierarchies
 Parent-child relationships between concepts.
 
-**Example:** Consciousness research
-- Parent: consciousness research
-  - Child: memory persistence
-    - Instance: confabulation episode
+**Example:** Machine learning project
+- Parent: machine learning project
+  - Child: model optimization
+    - Instance: training pipeline refactor
 
 ### 4. Cross-References  
 Links between different types of notes.

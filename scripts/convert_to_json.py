@@ -39,7 +39,7 @@ def parse_skill_md(path):
         "tags": [skill_name.split("-")[0]] if "-" in skill_name else [skill_name]
     }
 
-skills_dir = Path("/Volumes/Balances/skills")
+skills_dir = Path("./skills")
 skill_files = list(skills_dir.rglob("SKILL.md"))
 
 print(f"Found {len(skill_files)} skills")

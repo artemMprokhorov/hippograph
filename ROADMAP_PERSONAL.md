@@ -1,6 +1,6 @@
 # HippoGraph - Personal Use Roadmap
 
-**Target:** Single user, 200-2,000 notes, personal knowledge management + consciousness research
+**Target:** Single user, 200-2,000 notes, personal knowledge management
 
 **Philosophy:** Keep all memories. Natural patterns over forced deletion. Quality over scale.
 
