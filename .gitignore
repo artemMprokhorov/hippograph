@@ -49,3 +49,25 @@ ROADMAP_INTERNAL.md
 TODO.md
 NOTES.md
 SESSION_*.md
+
+# Backup files
+*.bak
+*.bak.*
+*.bak2
+*.bak3
+*.bak4
+*.backup
+*.backup_*
+*_bck_*
+*.old
+*.orig
+
+# Migration scripts (one-off)
+add_emotional_fields.py
+migrate_versioning.py
+
+# Deployment plans (internal)
+DEPLOYMENT_PLAN.md
+
+# Leaked key backups
+.env.backup_*

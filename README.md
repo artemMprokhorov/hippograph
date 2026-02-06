@@ -22,6 +22,12 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
 
+**Graph Visualization:**
+- 🌐 **Interactive Graph Viewer** — D3.js force-directed layout at `http://localhost:5002`
+- 🎨 **Category Color Coding** — Visual distinction by note type
+- ⏱️ **Timeline Animation** — Watch your knowledge graph grow over time
+- 🔍 **Click-to-Detail** — Load full note content on demand
+
 **Technical Features:**
 - 384-dimensional semantic embeddings (all-MiniLM-L6-v2)
 - SQLite graph database with nodes, edges, and entities
@@ -141,6 +147,16 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 | `find_similar` | Check for similar notes before adding (deduplication) |
 | `neural_stats` | View memory statistics and graph metrics |
 | `get_graph` | Get connections for a specific note |
+| `get_note_history` | View version history for a note |
+| `restore_note_version` | Restore note to a previous version |
+
+### REST API (Graph Viewer)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/graph-data` | All nodes and edges for visualization |
+| `GET /api/node/<id>` | Full content for a single node |
+| `GET /health` | Server health check |
 
 ---
 
@@ -159,6 +175,11 @@ edges (connections)
 ├── source_id → target_id
 ├── weight, edge_type
 └── created_at
+
+note_versions (history)
+├── note_id, version_number
+├── content snapshot
+└── last 5 versions kept
 
 entities (extracted concepts)
 ├── name, entity_type
@@ -252,6 +273,8 @@ hippograph/
 │   ├── backup.sh              # Database backup
 │   ├── restore.sh             # Database restore
 │   └── recompute_embeddings.py
+├── web/
+│   └── index.html             # D3.js graph viewer
 ├── docs/                      # Documentation
 ├── docker-compose.yml
 ├── Dockerfile

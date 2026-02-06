@@ -4,7 +4,7 @@ Neural Memory Graph Server
 Flask application with MCP SSE endpoint
 """
 
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import sys
@@ -40,6 +40,81 @@ def create_app():
     # Register MCP endpoint
     create_mcp_endpoint(app)
     
+
+    # ===== REST API for Graph Viewer =====
+    
+    @app.route("/api/graph-data", methods=["GET"])
+    def graph_data():
+        """Return all nodes and edges for visualization.
+        Query params:
+            - api_key: required for authentication
+            - brief: if 'true', return truncated content (first 200 chars)
+        """
+        # Auth check
+        api_key = request.args.get('api_key', '')
+        expected_key = os.getenv('NEURAL_API_KEY', '')
+        if not expected_key or api_key != expected_key:
+            return jsonify({"error": "unauthorized"}), 401
+        
+        brief = request.args.get('brief', 'true').lower() == 'true'
+        
+        nodes = get_all_nodes()
+        edges = get_all_edges()
+        
+        # Format nodes for viewer
+        formatted_nodes = []
+        for n in nodes:
+            node = {
+                "id": n["id"],
+                "category": n.get("category", "general"),
+                "importance": n.get("importance", "normal"),
+                "timestamp": n.get("timestamp", ""),
+                "emotional_tone": n.get("emotional_tone", ""),
+                "emotional_intensity": n.get("emotional_intensity", 5),
+            }
+            if brief:
+                content = n.get("content", "")
+                # First line + truncate
+                first_line = content.split("\n")[0][:200]
+                node["preview"] = first_line
+                node["full_length"] = len(content)
+            else:
+                node["content"] = n.get("content", "")
+            formatted_nodes.append(node)
+        
+        # Format edges
+        formatted_edges = []
+        for e in edges:
+            formatted_edges.append({
+                "source": e["source_id"],
+                "target": e["target_id"],
+                "weight": e.get("weight", 0.5),
+                "type": e.get("edge_type", "semantic")
+            })
+        
+        return jsonify({
+            "nodes": formatted_nodes,
+            "edges": formatted_edges,
+            "stats": {
+                "total_nodes": len(formatted_nodes),
+                "total_edges": len(formatted_edges)
+            }
+        })
+    
+    @app.route("/api/node/<int:node_id>", methods=["GET"])
+    def get_node_detail(node_id):
+        """Return full content for a single node"""
+        api_key = request.args.get('api_key', '')
+        expected_key = os.getenv('NEURAL_API_KEY', '')
+        if not expected_key or api_key != expected_key:
+            return jsonify({"error": "unauthorized"}), 401
+        
+        from database import get_node
+        node = get_node(node_id)
+        if not node:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(dict(node))
+
     return app
 
 

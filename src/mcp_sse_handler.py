@@ -11,7 +11,7 @@ import hmac
 import os
 
 from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node, get_note_history, restore_note_version
-from graph_engine import add_note_with_links, search_with_activation, get_node_graph
+from graph_engine import add_note_with_links, search_with_activation, get_node_graph, search_with_activation_protected, find_similar_notes
 from stable_embeddings import get_model
 
 # Authentication - use environment variable
@@ -67,7 +67,9 @@ def get_tools_list():
                     "category": {"type": "string", "description": "Optional: filter results by category (e.g., 'breakthrough', 'technical')"},
                     "time_after": {"type": "string", "description": "Optional: only return notes created after this datetime (ISO format: '2026-01-01T00:00:00')"},
                     "time_before": {"type": "string", "description": "Optional: only return notes created before this datetime (ISO format: '2026-02-01T00:00:00')"},
-                    "entity_type": {"type": "string", "description": "Optional: only return notes containing entities of this type (e.g., 'person', 'organization', 'concept', 'location', 'tech')"}
+                    "entity_type": {"type": "string", "description": "Optional: only return notes containing entities of this type (e.g., 'person', 'organization', 'concept', 'location', 'tech')"},
+                    "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 50, "description": "Hard limit on results (prevents context overflow)"},
+                    "detail_mode": {"type": "string", "enum": ["brief", "full"], "default": "full", "description": "brief: 200 char preview, full: complete content"}
                 },
                 "required": ["query"]
             }
@@ -186,6 +188,8 @@ def handle_tool_call(params):
         return tool_search_memory(
             args.get("query", ""), 
             args.get("limit", 5),
+            args.get("max_results", 10),
+            args.get("detail_mode", "full"),
             args.get("category", None),
             args.get("time_after", None),
             args.get("time_before", None),
@@ -196,7 +200,10 @@ def handle_tool_call(params):
             args.get("content", ""), 
             args.get("category", "general"),
             args.get("importance", "normal"),
-            args.get("force", False)
+            args.get("force", False),
+            args.get("emotional_tone", None),
+            args.get("emotional_intensity", 5),
+            args.get("emotional_reflection", None)
         )
     elif tool_name == "update_note":
         return tool_update_note(args.get("note_id"), args.get("content"), args.get("category"))
@@ -219,14 +226,22 @@ def handle_tool_call(params):
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
 
-def tool_search_memory(query: str, limit: int, category: str = None, 
+def tool_search_memory(query: str, limit: int, max_results: int = 10, detail_mode: str = "full", category: str = None, 
                       time_after: str = None, time_before: str = None, entity_type: str = None):
     """Search with spreading activation and optional filters (category, time range, entity type)"""
-    results = search_with_activation(query, limit, 
-                                     category_filter=category,
-                                     time_after=time_after, 
-                                     time_before=time_before,
-                                     entity_type_filter=entity_type)
+    response = search_with_activation_protected(
+        query=query,
+        limit=limit,
+        max_results=max_results,
+        detail_mode=detail_mode,
+        category_filter=category,
+        time_after=time_after,
+        time_before=time_before,
+        entity_type_filter=entity_type
+    )
+    
+    results = response["results"]
+    metadata = response["metadata"]
     
     if not results:
         filters = []
@@ -263,8 +278,27 @@ def tool_search_memory(query: str, limit: int, category: str = None,
             text = f"Found {len(results)} notes:\n\n"
             
         for r in results:
-            text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
-            text += f"{r['content']}\n\n"
+            if "first_line" in r:
+                # Brief mode
+                importance_tag = f" ⭐{r['importance']}" if r.get('importance') != 'normal' else ""
+                emotion_tag = f" 💭{r['emotional_tone']}" if r.get('emotional_tone') else ""
+                text += f"[ID:{r['id']}] [{r['category']}]{importance_tag}{emotion_tag} (activation: {r['activation']})\n"
+                text += f"  {r['first_line']}\n"
+                text += f"  [{r['full_length']} chars, {r['total_lines']} lines]\n\n"
+            else:
+                # Full mode
+                text += f"[ID:{r['id']}] [{r['category']}] (activation: {r['activation']})\n"
+                text += f"{r['content']}\n\n"
+        
+        text += f"\n📊 Context Window Protection:\n"
+        text += f"- Detail mode: {metadata['detail_mode']}\n"
+        text += f"- Results returned: {metadata['returned']}\n"
+        text += f"- Total activated: {metadata['total_activated']}\n"
+        text += f"- Estimated tokens: ~{metadata['estimated_tokens']}\n"
+        if metadata.get('has_more'):
+            text += f"💡 More results available (increase limit to see more)\n"
+        if metadata.get('truncated'):
+            text += f"⚠️ Truncated: requested limit > max_results\n"
     
     return {"content": [{"type": "text", "text": text}]}
 
@@ -454,24 +488,16 @@ def tool_get_note_history(note_id: int, limit: int = 5):
     """Get version history for a note"""
     versions = get_note_history(note_id, limit)
     if not versions:
-        return {"error": "No version history found for this note"}
+        return {"content": [{"type": "text", "text": f"No version history found for note #{note_id}"}]}
     
-    result = {
-        "note_id": note_id,
-        "total_versions": len(versions),
-        "versions": []
-    }
-    
+    text = f"📜 Version history for note #{note_id} ({len(versions)} versions):\n\n"
     for v in versions:
-        result["versions"].append({
-            "version": v["version_number"],
-            "created_at": v["created_at"],
-            "content_preview": v["content"][:100] + "..." if len(v["content"]) > 100 else v["content"],
-            "category": v["category"],
-            "importance": v["importance"]
-        })
+        preview = v["content"][:200] + "..." if len(v["content"]) > 200 else v["content"]
+        text += f"**Version {v['version_number']}** ({v['created_at']})\n"
+        text += f"  Category: {v['category']}, Importance: {v['importance']}\n"
+        text += f"  {preview}\n\n"
     
-    return result
+    return {"content": [{"type": "text", "text": text}]}
 
 
 def tool_restore_note_version(note_id: int, version_number: int):
@@ -479,11 +505,6 @@ def tool_restore_note_version(note_id: int, version_number: int):
     success = restore_note_version(note_id, version_number)
     
     if not success:
-        return {"error": "Version not found or restore failed"}
+        return {"content": [{"type": "text", "text": f"❌ Version {version_number} not found for note #{note_id}, or restore failed"}]}
     
-    return {
-        "success": True,
-        "message": f"Note #{note_id} restored to version {version_number}",
-        "note_id": note_id,
-        "restored_version": version_number
-    }
+    return {"content": [{"type": "text", "text": f"✅ Note #{note_id} restored to version {version_number}. Current state saved as new version before restore."}]}

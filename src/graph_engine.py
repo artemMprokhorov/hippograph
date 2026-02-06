@@ -382,14 +382,19 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             "content": node["content"],
             "category": node["category"],
             "activation": round(activation, 4),
-            "timestamp": node.get("timestamp")
+            "timestamp": node.get("timestamp"),
+            "importance": node.get("importance", "normal"),
+            "emotional_tone": node.get("emotional_tone"),
+            "emotional_intensity": node.get("emotional_intensity", 5)
         })
         
         # Stop when we have enough results
         if len(results) >= limit:
             break
     
-    return results
+    # Include total activated count for context awareness
+    total_activated = len(activations)
+    return results, total_activated
 
 
 def get_node_graph(node_id):
@@ -415,4 +420,120 @@ def get_node_graph(node_id):
             }
             for c in connected
         ]
+    }
+"""
+Context Window Protection implementation for search_with_activation
+
+Changes:
+1. Added max_results parameter (hard limit, default: 10)
+2. Added detail_mode parameter ("brief" | "full", default: "full")
+3. Token counting for results
+4. Brief mode: returns id, category, first 200 chars, activation
+
+Philosophy: NO summarization (lossy), only truncation (user controls detail)
+"""
+
+def format_result_brief(result):
+    """Format result in brief mode - first line + metadata for quick scanning"""
+    content = result["content"]
+    # Get first meaningful line (skip empty lines)
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    first_line = lines[0] if lines else content[:100]
+    # Cap at 150 chars
+    if len(first_line) > 150:
+        first_line = first_line[:147] + "..."
+    
+    brief = {
+        "id": result["id"],
+        "category": result["category"],
+        "first_line": first_line,
+        "activation": result["activation"],
+        "timestamp": result.get("timestamp"),
+        "importance": result.get("importance", "normal"),
+        "full_length": len(content),
+        "total_lines": len(lines)
+    }
+    
+    # Add emotional context if present
+    if result.get("emotional_tone"):
+        brief["emotional_tone"] = result["emotional_tone"]
+    if result.get("emotional_intensity") and result["emotional_intensity"] != 5:
+        brief["emotional_intensity"] = result["emotional_intensity"]
+    
+    return brief
+
+def estimate_tokens(text):
+    """Rough token estimation: ~4 chars per token"""
+    return len(text) // 4
+
+def search_with_activation_protected(query, limit=5, max_results=10, detail_mode="full",
+                                   iterations=ACTIVATION_ITERATIONS, decay=ACTIVATION_DECAY, 
+                                   category_filter=None, time_after=None, time_before=None, 
+                                   entity_type_filter=None):
+    """
+    Search with context window protection.
+    
+    NEW Parameters:
+        max_results: Hard limit on results returned (default: 10)
+                    Overrides 'limit' if limit > max_results
+        detail_mode: "brief" (200 char preview) or "full" (complete content)
+                    Default: "full"
+    
+    Returns:
+        {
+            "results": [...],
+            "metadata": {
+                "total_activated": int,  # How many nodes were activated
+                "returned": int,          # How many returned
+                "detail_mode": str,       # "brief" or "full"
+                "estimated_tokens": int,  # Rough token count
+                "truncated": bool         # True if total_activated > returned
+            }
+        }
+    
+    Brief mode returns:
+        - id, category, preview (200 chars), activation, timestamp
+        - full_length (original content length)
+        - truncated flag
+    
+    Full mode returns:
+        - id, category, content (complete), activation, timestamp
+    """
+    
+    # Enforce max_results hard limit
+    effective_limit = min(limit, max_results)
+    
+    # Get results from original search_with_activation
+    raw_results, total_activated = search_with_activation(
+        query=query,
+        limit=effective_limit,
+        iterations=iterations,
+        decay=decay,
+        category_filter=category_filter,
+        time_after=time_after,
+        time_before=time_before,
+        entity_type_filter=entity_type_filter
+    )
+    
+    # Format based on detail mode
+    if detail_mode == "brief":
+        formatted_results = [format_result_brief(r) for r in raw_results]
+        total_chars = sum(len(r["first_line"]) for r in formatted_results)
+    else:
+        formatted_results = raw_results
+        total_chars = sum(len(r["content"]) for r in formatted_results)
+    
+    # Metadata
+    metadata = {
+        "total_activated": total_activated,
+        "returned": len(formatted_results),
+        "detail_mode": detail_mode,
+        "estimated_tokens": estimate_tokens(str(formatted_results)),
+        "truncated": limit > max_results,
+        "has_more": total_activated > len(formatted_results)
+    }
+    
+    return {
+        "results": formatted_results,
+        "metadata": metadata
     }
