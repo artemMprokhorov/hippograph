@@ -187,6 +187,8 @@ def add_note_with_links(content, category="general", importance="normal", force=
     entities = extract_entities(content)
     entity_links = []
     
+    graph_cache = get_graph_cache()  # Get cache for incremental updates
+    
     for en,et in entities:
         eid = get_or_create_entity(en, et)
         link_node_to_entity(node_id, eid)
@@ -194,6 +196,8 @@ def add_note_with_links(content, category="general", importance="normal", force=
             if r["id"] != node_id:
                 create_edge(node_id, r["id"], weight=0.6, edge_type="entity")
                 create_edge(r["id"], node_id, weight=0.6, edge_type="entity")
+                if graph_cache.enabled:
+                    graph_cache.add_edge(node_id, r["id"], weight=0.6, edge_type="entity")
                 entity_links.append(r["id"])
     
     # Find semantically similar notes
@@ -218,6 +222,8 @@ def add_note_with_links(content, category="general", importance="normal", force=
     for rid,sim in sims[:MAX_SEMANTIC_LINKS]:
         create_edge(node_id, rid, weight=sim, edge_type="semantic")
         create_edge(rid, node_id, weight=sim, edge_type="semantic")
+        if graph_cache.enabled:
+            graph_cache.add_edge(node_id, rid, weight=sim, edge_type="semantic")
         semantic_links.append((rid, sim))
         if sim >= SIMILAR_THRESHOLD: similar_warnings.append({"id": rid, "similarity": round(sim, 4)})
 
@@ -280,7 +286,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         for node_id, sim in results:
             activations[node_id] = sim
             semantic_sims[node_id] = sim
-        print(f"🚀 ANN search: {len(activations)} initial candidates")
+        print(f"🚀 ANN search: {len(activations)} initial candidates, ids={[r[0] for r in results[:5]]}, sims={[round(r[1],3) for r in results[:5]]}")
+        import sys; sys.stdout.flush()
     else:
         # Fallback: linear scan through all nodes
         for node in all_nodes:
@@ -390,6 +397,13 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     
     # Step 6: Sort and return top results
     sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
+    
+    # Debug: check if new notes are in node_map
+    for node_id, _ in sorted_nodes[:10]:
+        if node_id not in node_map:
+            print(f"⚠️  NODE {node_id} in blended but NOT in node_map! node_map has {len(node_map)} entries, max_id={max(node_map.keys()) if node_map else 0}")
+            import sys; sys.stdout.flush()
+            break
     
     results = []
     for node_id, activation in sorted_nodes:

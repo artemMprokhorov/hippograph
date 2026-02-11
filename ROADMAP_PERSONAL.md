@@ -102,8 +102,9 @@ query semantics.
 - Top-1 accuracy: 80% → **100%**
 - 10 test queries, formal three-phase comparison
 
-**Known Bug:** hnswlib add_vector() at runtime — notes invisible until container restart.
-Must fix: real-time indexing required. See bug report note #623.
+**Known Bug:** ~~hnswlib add_vector() at runtime — notes invisible until container restart.~~ ✅ FIXED Feb 12.
+Root cause: graph_cache not updated on add_note. Entity and semantic edges were created in DB but not in in-memory cache, giving new notes spread=0 in blend scoring.
+Fix: call graph_cache.add_edge() after each create_edge() in add_note flow.
 
 **Success Metric:** ✅ >80% precision@5 achieved  
 **Files:** `src/graph_engine.py`, `docker-compose.yml`
