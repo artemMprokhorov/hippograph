@@ -25,6 +25,7 @@ ACTIVATION_DECAY = float(os.getenv("ACTIVATION_DECAY", "0.7"))
 SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.5"))
 HALF_LIFE_DAYS = float(os.getenv("HALF_LIFE_DAYS", "30"))
 MAX_SEMANTIC_LINKS = int(os.getenv("MAX_SEMANTIC_LINKS", "5"))
+BLEND_ALPHA = float(os.getenv("BLEND_ALPHA", "0.6"))  # 0.6 = 60% semantic, 40% spreading
 
 
 def cosine_similarity(a, b):
@@ -268,12 +269,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     # Try ANN index first (O(log n)), fallback to linear scan (O(n))
     ann_index = get_ann_index()
     activations = {}
+    semantic_sims = {}  # Preserve raw semantic similarities for blend scoring
     
     if ann_index.enabled and len(ann_index.node_ids) > 0:
         # Fast ANN search
         results = ann_index.search(query_emb, k=limit*3, min_similarity=0.0)
         for node_id, sim in results:
             activations[node_id] = sim
+            semantic_sims[node_id] = sim
         print(f"🚀 ANN search: {len(activations)} initial candidates")
     else:
         # Fallback: linear scan through all nodes
@@ -284,6 +287,7 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             sim = cosine_similarity(query_emb, node_emb)
             if sim >= 0.3:
                 activations[node["id"]] = sim
+                semantic_sims[node["id"]] = sim
         print(f"⚠️  Linear search: {len(activations)} initial candidates (ANN disabled)")
     
     # Step 2: Spreading activation with normalization and damping
@@ -338,8 +342,42 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             activations[node_id] *= recency_factor(last_accessed, created)
             activations[node_id] *= importance_factor(importance, access_count)
     
-    # Step 4: Sort and return top results
-    sorted_nodes = sorted(activations.items(), key=lambda x: x[1], reverse=True)
+    # Step 4: Blend scoring — combine semantic similarity with spreading activation
+    # This prevents hub nodes from dominating results regardless of query relevance
+    # Normalize spreading activations to 0-1 range for fair blending
+    if activations:
+        max_spread = max(activations.values())
+        if max_spread > 0:
+            spread_normalized = {nid: v / max_spread for nid, v in activations.items()}
+        else:
+            spread_normalized = activations
+    else:
+        spread_normalized = {}
+    
+    # Normalize semantic similarities to 0-1 range
+    if semantic_sims:
+        max_sem = max(semantic_sims.values())
+        if max_sem > 0:
+            sem_normalized = {nid: v / max_sem for nid, v in semantic_sims.items()}
+        else:
+            sem_normalized = semantic_sims
+    else:
+        sem_normalized = {}
+    
+    # Blend: for nodes with both signals, combine them
+    # For nodes with only spreading (discovered via graph), use spreading only
+    blended = {}
+    alpha = BLEND_ALPHA
+    for node_id in activations:
+        sem = sem_normalized.get(node_id, 0.0)
+        spread = spread_normalized.get(node_id, 0.0)
+        blended[node_id] = alpha * sem + (1 - alpha) * spread
+    
+    print(f"🔀 Blend scoring (α={alpha}): {len(blended)} nodes scored")
+    import sys; sys.stdout.flush()
+    
+    # Step 5: Sort and return top results
+    sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
     
     results = []
     for node_id, activation in sorted_nodes:
@@ -393,7 +431,7 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             break
     
     # Include total activated count for context awareness
-    total_activated = len(activations)
+    total_activated = len(blended)
     return results, total_activated
 
 

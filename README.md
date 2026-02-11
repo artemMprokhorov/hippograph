@@ -21,6 +21,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 🔗 **Semantic Connections** — Discovers related notes through shared entities
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
+- 🔀 **Blend Scoring** — Combines semantic similarity with graph activation (α=0.6 default) for balanced relevance
 
 **Graph Visualization:**
 - 🌐 **Interactive Graph Viewer** — D3.js force-directed layout at `http://localhost:5002`
@@ -211,6 +212,8 @@ Search Query
        ↓              ↓                      ↓
     Vector DB    Related Nodes      Connection Chains
                                            ↓
+                              Blend Scoring (α×semantic + (1-α)×spread)
+                                           ↓
                                   Temporal Decay + Importance Boost
 ```
 
@@ -227,6 +230,9 @@ ENTITY_EXTRACTOR=spacy  # Options: regex, spacy
 # Spreading activation
 ACTIVATION_ITERATIONS=3
 ACTIVATION_DECAY=0.7
+
+# Blend scoring (semantic vs graph activation balance)
+# BLEND_ALPHA=0.6  # 0.0=pure activation, 1.0=pure semantic, default 0.6
 
 # Temporal decay (days)
 HALF_LIFE_DAYS=30

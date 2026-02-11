@@ -78,18 +78,35 @@
 
 ---
 
-### 5. Retrieval Quality Testing ⏳ PLANNED
-**Status:** Not started  
+### 5. Retrieval Quality Testing ⏳ IN PROGRESS
+**Status:** Blend scoring implemented and deployed, formal testing remaining  
 **Goal:** Measure and improve search relevance
 
+**Root Cause Found (Feb 6):**
+Hub nodes (project-status, milestones with many entities) accumulate activation
+from many neighbors via spreading activation, dominating results regardless of
+query semantics. Query "spaCy NER" returned 0 relevant results in top-5 despite
+sim=0.71 for correct note.
+
+**Blend Scoring Implemented (Feb 11):**
+`final_score = α × semantic_similarity + (1-α) × spreading_activation`
+- Default α=0.6 (semantic-heavy)
+- Spreading activation normalized to 0-1 range before blending
+- All scores now ≤1.0 (previously 2.5+ from raw activation)
+- MCP-verified: relevant results for targeted queries
+
 **Tasks:**
+- [x] Identify root cause: hub dominance in spreading activation
+- [x] Tune importance boost (critical 2.0→1.5, access boost 50%→20%)
+- [x] Implement blend scoring: final = α×semantic + (1-α)×spreading (α=0.6 default)
+- [x] Deploy and verify through MCP (scores ≤1.0, relevant results)
+- [ ] Add BLEND_ALPHA env var for tuning
 - [ ] Create test dataset (queries + expected results)
-- [ ] Measure precision@k and recall@k
+- [ ] Measure precision@k before/after blend
 - [ ] Benchmark latency (target: <500ms for 2000 notes)
-- [ ] Establish baseline before optimizations
 
 **Success Metric:** >80% precision@5 on test queries  
-**Estimated:** 2-3 hours
+**Estimated:** 1-2 hours remaining
 
 ---
 
@@ -175,16 +192,17 @@
 
 ---
 
-## 📊 Current Status (Feb 5, 2026)
+## 📊 Current Status (Feb 11, 2026)
 
-- **Nodes:** 593 (189 development skills, 14 security-critical)
-- **Edges:** 48,108 (45,596 entity, 2,512 semantic)
-- **Entities:** 990
+- **Nodes:** 603+
+- **Edges:** 51,582
+- **Entities:** 1,017
 - **MCP Tools:** 10/10 verified
-- **Graph Viewer:** REST API loading all 593 nodes
+- **Graph Viewer:** REST API loading all nodes
 - **Completed:** 5/7 HIGH PRIORITY
-- **Next:** Retrieval Quality Testing (#5)
+- **In Progress:** Retrieval Quality (#5) — blend scoring deployed, formal testing remaining
+- **DeepWiki:** https://deepwiki.com/artemMprokhorov/hippograph
 
 ---
 
-**Last Updated:** Feb 6, 2026
+**Last Updated:** Feb 11, 2026
