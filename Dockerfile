@@ -18,8 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download spaCy model for entity extraction
+# Download spaCy models for multilingual entity extraction
 RUN python -m spacy download en_core_web_sm
+RUN python -m spacy download xx_ent_wiki_sm
 
 # Copy source code and startup script
 COPY src/ ./src/
