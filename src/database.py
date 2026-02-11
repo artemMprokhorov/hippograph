@@ -312,6 +312,14 @@ def get_nodes_by_entity(entity_id):
         return [dict(row) for row in cursor.fetchall()]
 
 
+def get_entity_counts_batch():
+    """Get entity count per node as dict {node_id: count}"""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT node_id, COUNT(*) FROM node_entities GROUP BY node_id")
+        return {row[0]: row[1] for row in cursor.fetchall()}
+
+
 def get_stats():
     """Get database statistics"""
     with get_connection() as conn:

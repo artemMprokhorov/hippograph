@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m spacy download en_core_web_sm
 
 # Copy source code and startup script
-COPY src/ ./
+COPY src/ ./src/
 COPY web/ /var/www/html/
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh

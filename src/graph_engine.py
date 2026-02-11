@@ -286,8 +286,6 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         for node_id, sim in results:
             activations[node_id] = sim
             semantic_sims[node_id] = sim
-        print(f"🚀 ANN search: {len(activations)} initial candidates, ids={[r[0] for r in results[:5]]}, sims={[round(r[1],3) for r in results[:5]]}")
-        import sys; sys.stdout.flush()
     else:
         # Fallback: linear scan through all nodes
         for node in all_nodes:
@@ -384,7 +382,6 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         blended[node_id] = alpha * sem + (1 - alpha) * spread
     
     print(f"🔀 Blend scoring (α={alpha}): {len(blended)} nodes scored")
-    import sys; sys.stdout.flush()
     
     # Step 5: Apply entity-count penalty to suppress hub notes
     # Notes with many entities are generic (session summaries, milestones)
@@ -401,8 +398,7 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     # Debug: check if new notes are in node_map
     for node_id, _ in sorted_nodes[:10]:
         if node_id not in node_map:
-            print(f"⚠️  NODE {node_id} in blended but NOT in node_map! node_map has {len(node_map)} entries, max_id={max(node_map.keys()) if node_map else 0}")
-            import sys; sys.stdout.flush()
+            print(f"⚠️  NODE {node_id} in blended but NOT in node_map")
             break
     
     results = []

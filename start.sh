@@ -24,4 +24,4 @@ echo "   - Local: http://localhost:5001"
 
 # Start Flask server
 echo "▶️  Starting Flask MCP server..."
-exec python server.py
+exec python src/server.py

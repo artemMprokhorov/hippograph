@@ -99,10 +99,10 @@ class ANNIndex:
             query_embedding = query_embedding.reshape(1, -1)
         
         try:
-            # Query returns (labels, distances)
-            # For cosine: distance = 1 - cosine_similarity (lower is more similar)
-            # For ip: distance = 1 - inner_product
-            labels, distances = self.index.knn_query(query_embedding, k=k)
+            actual_k = min(k, self.index.get_current_count())
+            if actual_k == 0:
+                return []
+            labels, distances = self.index.knn_query(query_embedding, k=actual_k)
             
             results = []
             for label, dist in zip(labels[0], distances[0]):

@@ -9,8 +9,9 @@ from flask_cors import CORS
 import os
 import sys
 
-# Add src to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add src to path (must be first to ensure volume-mounted src/ takes priority)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, '/app/src')
 
 from database import init_database
 from mcp_sse_handler import create_mcp_endpoint
