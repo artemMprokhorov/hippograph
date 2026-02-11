@@ -25,8 +25,8 @@ services:
       - HALF_LIFE_DAYS=30
       # Entity extraction (regex, spacy, llm)
       - ENTITY_EXTRACTOR=spacy
-      # Embedding model
-      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      # Embedding model (multilingual for ru/en bilingual memory)
+      - EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       # Blend scoring (semantic vs spreading activation balance)
       - BLEND_ALPHA=0.7
       # ANN Indexing (fast O(log n) search)

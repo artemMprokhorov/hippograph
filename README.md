@@ -30,7 +30,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 🔍 **Click-to-Detail** — Load full note content on demand
 
 **Technical Features:**
-- 384-dimensional semantic embeddings (all-MiniLM-L6-v2)
+- 384-dimensional semantic embeddings (paraphrase-multilingual-MiniLM-L12-v2)
 - SQLite graph database with nodes, edges, and entities
 - Automatic relationship detection between notes
 - MCP protocol integration for AI assistants
