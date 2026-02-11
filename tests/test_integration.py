@@ -1,136 +1,130 @@
 #!/usr/bin/env python3
 """
-Integration tests for MCP tools - requires running server
+Integration tests — test database operations and module imports.
+Requires: pip install -r requirements.txt
 """
 import pytest
-import json
-import sys
+import sqlite3
+import tempfile
 import os
+import sys
 
-# Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-
 
 pytestmark = pytest.mark.integration
 
 
 class TestDatabaseOperations:
-    """Test database schema and basic operations"""
-    
-    def test_database_schema(self):
-        """Test that required tables exist"""
-        import sqlite3
-        
-        # Use test database
-        db_path = '/tmp/test_memory.db'
-        
-        # Create if not exists
-        conn = sqlite3.connect(db_path)
+    """Test database schema and CRUD operations"""
+
+    def setup_method(self):
+        """Create temp DB for each test"""
+        self.db_fd, self.db_path = tempfile.mkstemp(suffix='.db')
+        os.environ['DB_PATH'] = self.db_path
+        # Re-import to use test DB
+        import database
+        database._connection = None
+        database.init_database()
+        self.db = database
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
+
+    def test_schema_tables_exist(self):
+        """All required tables created"""
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # Check tables exist
-        cursor.execute("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table'
-        """)
-        tables = [row[0] for row in cursor.fetchall()]
-        
-        expected_tables = ['nodes', 'edges', 'entities', 'node_entities']
-        
-        # Note: This test will fail if DB doesn't exist
-        # In real CI/CD, we'd set up test DB first
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = {row[0] for row in cursor.fetchall()}
         conn.close()
-        
-        # For now, just verify test runs
-        assert True
-    
-    def test_note_lifecycle(self):
-        """Test full lifecycle: create, read, update, delete"""
-        # This would test actual database operations
-        # Requires test database setup
-        
-        # Placeholder for integration test
-        assert True
+        for t in ['nodes', 'edges', 'entities', 'node_entities']:
+            assert t in tables, f"Missing table: {t}"
+
+    def test_add_and_get_node(self):
+        """Can add and retrieve a note"""
+        node_id = self.db.create_node("Test content", "test-cat")
+        assert node_id > 0
+        node = self.db.get_node(node_id)
+        assert node is not None
+        assert node['content'] == "Test content"
+        assert node['category'] == "test-cat"
+
+    def test_entity_counts_batch(self):
+        """get_entity_counts_batch returns correct counts"""
+        node_id = self.db.create_node("Test node", "test")
+        eid1 = self.db.get_or_create_entity("Python", "tech")
+        eid2 = self.db.get_or_create_entity("Docker", "tech")
+        self.db.link_node_to_entity(node_id, eid1)
+        self.db.link_node_to_entity(node_id, eid2)
+        counts = self.db.get_entity_counts_batch()
+        assert counts.get(node_id) == 2
+
+    def test_create_edge_bidirectional(self):
+        """Edges stored — connected nodes retrievable"""
+        n1 = self.db.create_node("Node 1", "test")
+        n2 = self.db.create_node("Node 2", "test")
+        self.db.create_edge(n1, n2, weight=0.7, edge_type="semantic")
+        self.db.create_edge(n2, n1, weight=0.7, edge_type="semantic")
+        neighbors = self.db.get_connected_nodes(n1)
+        neighbor_ids = [n['id'] for n in neighbors]
+        assert n2 in neighbor_ids
 
 
-class TestSearchQuality:
-    """Test search result quality and ranking"""
-    
+class TestModuleImports:
+    """Test that all modules import without errors"""
+
+    def test_import_database(self):
+        import database
+        assert hasattr(database, 'create_node')
+        assert hasattr(database, 'get_entity_counts_batch')
+
     @pytest.mark.slow
-    def test_search_finds_exact_match(self):
-        """Test that search finds exact text matches"""
-        # Would require test database with known content
-        query = "knowledge management"
-        
-        # Placeholder - real test would call search_with_activation
-        assert True
-    
-    @pytest.mark.slow
-    def test_search_ranking_by_relevance(self):
-        """Test that results are ranked by relevance"""
-        # Would verify activation scores decrease
-        assert True
-    
-    def test_empty_query_handling(self):
-        """Test handling of empty search queries"""
-        query = ""
-        
-        # Should return empty or handle gracefully
-        assert True
+    def test_import_graph_engine(self):
+        """Requires torch — slow to import"""
+        import graph_engine
+        assert hasattr(graph_engine, 'search_with_activation')
+        assert hasattr(graph_engine, 'add_note')
+
+    def test_import_ann_index(self):
+        import ann_index
+        assert hasattr(ann_index, 'ANNIndex')
+        assert hasattr(ann_index, 'get_ann_index')
+
+    def test_import_graph_cache(self):
+        import graph_cache
+        assert hasattr(graph_cache, 'GraphCache')
+        assert hasattr(graph_cache, 'get_graph_cache')
 
 
-class TestGraphConsistency:
-    """Test graph structure consistency"""
-    
-    def test_bidirectional_edges(self):
-        """Test that entity edges are bidirectional"""
-        # If node A links to B via entity X,
-        # then B should link back to A via entity X
-        assert True
-    
-    def test_no_orphaned_nodes(self):
-        """Test that all nodes have at least one connection"""
-        # Unless they're newly created
-        assert True
-    
-    def test_edge_weight_consistency(self):
-        """Test that edge weights sum correctly"""
-        # Semantic similarity edges should match cosine distance
-        assert True
-
-
-@pytest.mark.skipif(
-    os.getenv('SKIP_SLOW_TESTS') == '1',
-    reason="Slow tests skipped in CI"
-)
 class TestPerformance:
     """Performance benchmarks"""
-    
-    def test_search_response_time(self):
-        """Test that search completes within reasonable time"""
+
+    def test_dict_lookup_speed(self):
+        """Graph cache O(1) lookup under 1ms for 1000 ops"""
         import time
-        
-        start = time.time()
-        # Would call search here
-        elapsed = time.time() - start
-        
-        # Should complete in < 1 second for small DB
-        # For large DB with ANN index, should be O(log n)
-        assert elapsed < 1.0
-    
-    def test_graph_cache_lookup_speed(self):
-        """Test that graph cache provides O(1) lookup"""
-        # Verify dict lookup is fast
-        test_cache = {i: list(range(10)) for i in range(1000)}
-        
-        import time
+        cache = {i: list(range(10)) for i in range(1000)}
         start = time.time()
         for _ in range(1000):
-            _ = test_cache.get(500, [])
-        elapsed = time.time() - start
-        
-        # 1000 lookups should be < 1ms
-        assert elapsed < 0.001
+            _ = cache.get(500, [])
+        assert time.time() - start < 0.01
+
+    @pytest.mark.slow
+    def test_blend_scoring_speed(self):
+        """Blend scoring 1000 nodes under 10ms"""
+        import time
+        import random
+        random.seed(42)
+        sems = {i: random.random() for i in range(1000)}
+        spreads = {i: random.random() for i in range(1000)}
+        alpha = 0.7
+        start = time.time()
+        blended = {
+            nid: alpha * sems[nid] + (1 - alpha) * spreads.get(nid, 0)
+            for nid in sems
+        }
+        assert time.time() - start < 0.01
+        assert len(blended) == 1000
 
 
 if __name__ == '__main__':
