@@ -95,18 +95,24 @@ sim=0.71 for correct note.
 - All scores now ≤1.0 (previously 2.5+ from raw activation)
 - MCP-verified: relevant results for targeted queries
 
-**Tasks:**
-- [x] Identify root cause: hub dominance in spreading activation
-- [x] Tune importance boost (critical 2.0→1.5, access boost 50%→20%)
-- [x] Implement blend scoring: final = α×semantic + (1-α)×spreading (α=0.6 default)
-- [x] Deploy and verify through MCP (scores ≤1.0, relevant results)
-- [ ] Add BLEND_ALPHA env var for tuning
-- [ ] Create test dataset (queries + expected results)
-- [ ] Measure precision@k before/after blend
+**Precision@5 Baseline (Feb 11):**
+- 10 test queries, P@5=70%, Top-1 accuracy=80%
+- Issues: session-end notes as noise, critical importance overuse
+- Backfilled 200 missing embeddings (batch import), ANN index now 611 vectors
+
+**Remaining — Phase 2 (Retrieval Quality Tuning):**
+- [ ] Raise blend α from 0.6 → 0.7-0.75 (more semantic weight)
+- [ ] Downgrade session-end/session-handoff importance: critical → normal
+- [ ] Re-run precision@5 test, compare with baseline
+- [ ] If still <80%: implement entity-count penalty (score *= 1/log(entity_count+1))
+- [ ] Add BLEND_ALPHA env var for runtime tuning
 - [ ] Benchmark latency (target: <500ms for 2000 notes)
 
+**Known Bug:** hnswlib add_vector() at runtime — notes invisible until container restart.
+Must fix: real-time indexing required. See bug report note #623.
+
 **Success Metric:** >80% precision@5 on test queries  
-**Estimated:** 1-2 hours remaining
+**Estimated:** 2-3 hours remaining
 
 ---
 
@@ -194,13 +200,14 @@ sim=0.71 for correct note.
 
 ## 📊 Current Status (Feb 11, 2026)
 
-- **Nodes:** 603+
-- **Edges:** 51,582
-- **Entities:** 1,017
+- **Nodes:** 611
+- **Edges:** 55,284
+- **Entities:** 1,036
+- **ANN Vectors:** 611 (all nodes indexed, backfill complete)
 - **MCP Tools:** 10/10 verified
 - **Graph Viewer:** REST API loading all nodes
 - **Completed:** 5/7 HIGH PRIORITY
-- **In Progress:** Retrieval Quality (#5) — blend scoring deployed, formal testing remaining
+- **In Progress:** Retrieval Quality (#5) — Phase 2 tuning next
 - **DeepWiki:** https://deepwiki.com/artemMprokhorov/hippograph
 
 ---
