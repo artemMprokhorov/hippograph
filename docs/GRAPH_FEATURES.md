@@ -148,6 +148,22 @@ With blend (α=0.7):
 | 0.3 | Activation-heavy | Associative recall, brainstorming |
 | 0.0 | Pure spreading activation | Graph exploration |
 
+### Entity-Count Penalty
+
+Notes with many entities (>20) tend to be generic summaries that connect to everything. A linear penalty suppresses them:
+
+```
+if entity_count > 20:
+    score *= 20.0 / entity_count
+```
+
+| Entities | Penalty | Effect |
+|----------|---------|--------|
+| ≤20 | None | Normal scoring |
+| 25 | ×0.80 | Mild suppression |
+| 30 | ×0.67 | Moderate |
+| 42 | ×0.48 | Strong suppression |
+
 ---
 
 ## Entity Extraction

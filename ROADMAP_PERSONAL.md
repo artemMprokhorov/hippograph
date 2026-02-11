@@ -98,15 +98,12 @@ query semantics.
 - Removed artificial boost for generic multi-topic notes
 
 **Results:**
-- P@5: 70% → **80%** ✅ TARGET MET
+- P@5: 70% → 80% → **82%** ✅ TARGET MET
 - Top-1 accuracy: 80% → **100%**
-- 10 test queries, formal before/after comparison
+- 10 test queries, formal three-phase comparison
 
 **Known Bug:** hnswlib add_vector() at runtime — notes invisible until container restart.
 Must fix: real-time indexing required. See bug report note #623.
-
-**Future improvement:** Entity-count penalty (score *= 1/log(entity_count+1)) for
-notes with many entities that act as hubs through content breadth.
 
 **Success Metric:** ✅ >80% precision@5 achieved  
 **Files:** `src/graph_engine.py`, `docker-compose.yml`

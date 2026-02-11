@@ -6,13 +6,15 @@ Implements spreading activation search and automatic linking
 
 import numpy as np
 import os
+import math
 from datetime import datetime
 from typing import List, Dict, Any
 
 from database import (
     create_node, get_node, get_all_nodes, touch_node,
     create_edge, get_connected_nodes,
-    get_or_create_entity, link_node_to_entity, get_nodes_by_entity
+    get_or_create_entity, link_node_to_entity, get_nodes_by_entity,
+    get_entity_counts_batch
 )
 from stable_embeddings import get_model
 from entity_extractor import extract_entities
@@ -178,7 +180,8 @@ def add_note_with_links(content, category="general", importance="normal", force=
     node_id = create_node(content, category, embedding.tobytes(), importance, emotional_tone, emotional_intensity, emotional_reflection)
     
     # Add to ANN index incrementally (enables immediate search for this note)
-    if ann_index.enabled: ann_index.add_vector(node_id, embedding)
+    if ann_index.enabled:
+        ann_index.add_vector(node_id, embedding)
     
     # Extract entities and create entity-based links
     entities = extract_entities(content)
@@ -376,7 +379,16 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     print(f"🔀 Blend scoring (α={alpha}): {len(blended)} nodes scored")
     import sys; sys.stdout.flush()
     
-    # Step 5: Sort and return top results
+    # Step 5: Apply entity-count penalty to suppress hub notes
+    # Notes with many entities are generic (session summaries, milestones)
+    # and should be penalized to let specific notes surface
+    entity_counts = get_entity_counts_batch()
+    for node_id in blended:
+        ec = entity_counts.get(node_id, 0)
+        if ec > 20:  # Only penalize true hub notes (25-42 entities)
+            blended[node_id] *= 20.0 / ec  # Linear penalty: 0.8 at 25, 0.48 at 42
+    
+    # Step 6: Sort and return top results
     sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
     
     results = []
