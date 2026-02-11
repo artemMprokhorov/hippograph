@@ -7,6 +7,7 @@ services:
       - "5002:5002"  # Web viewer
     volumes:
       - ./data:/app/data
+      - ./src:/app/src
     environment:
       - DB_PATH=/app/data/memory.db
       - FLASK_PORT=5000
@@ -26,6 +27,8 @@ services:
       - ENTITY_EXTRACTOR=spacy
       # Embedding model
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      # Blend scoring (semantic vs spreading activation balance)
+      - BLEND_ALPHA=0.7
       # ANN Indexing (fast O(log n) search)
       - USE_ANN_INDEX=true
       - ANN_INDEX_TYPE=HNSW
