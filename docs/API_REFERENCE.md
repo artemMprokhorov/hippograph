@@ -22,7 +22,9 @@ curl -H "Authorization: Bearer YOUR_KEY" http://localhost:5001/sse ...
 
 ### search_memory
 
-Search through notes using spreading activation algorithm with context window protection.
+Search through notes using blend scoring (semantic similarity + spreading activation) with context window protection.
+
+**Scoring:** `final_score = α × semantic_similarity + (1-α) × spreading_activation` where α=0.7 by default (configurable via BLEND_ALPHA env var).
 
 **Parameters:**
 | Name | Type | Required | Default | Description |

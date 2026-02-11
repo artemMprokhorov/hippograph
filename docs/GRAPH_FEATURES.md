@@ -66,7 +66,9 @@ Query: "docker container"
    ↓
 3. Apply spreading activation along graph edges
    ↓
-4. Boost notes connected to similar notes
+4. Blend scoring: final = α×semantic + (1-α)×activation
+   ↓
+5. Apply importance boost + temporal decay
    ↓
 Results: Related concepts like "kubernetes pod", "container orchestration"
 ```
@@ -105,6 +107,46 @@ Second-degree connections (activation=0.4):
 - Discovers **related but not obvious** connections
 - Finds notes through **association chains**
 - Mimics how **human memory** works (one thought triggers related thoughts)
+
+---
+
+## Blend Scoring
+
+Spreading activation alone suffers from **hub dominance** — notes with many entity connections accumulate activation regardless of query relevance. Blend scoring solves this by combining semantic similarity with graph activation.
+
+### Formula
+
+```
+final_score = α × semantic_similarity + (1-α) × spreading_activation
+```
+
+- **α = 0.7** (default) — 70% weight on semantic meaning, 30% on graph connections
+- Both components normalized to 0-1 range before blending
+- Configurable via `BLEND_ALPHA` environment variable
+
+### Why It Works
+
+```
+Query: "spaCy NER entity extraction"
+
+Without blend (pure spreading activation):
+  ❌ Top results: generic milestone notes with many connections
+  ❌ Actual NER note buried at position #8
+
+With blend (α=0.7):
+  ✅ Top-1: SKILL LEARNED entity-extraction (high semantic match)
+  ✅ Top-5: All NER-related notes
+```
+
+### Tuning α
+
+| Value | Behavior | Best for |
+|-------|----------|----------|
+| 1.0 | Pure semantic search | Precise factual queries |
+| 0.7 | Semantic-heavy blend (default) | General use, balanced relevance |
+| 0.5 | Equal blend | Exploratory, discover connections |
+| 0.3 | Activation-heavy | Associative recall, brainstorming |
+| 0.0 | Pure spreading activation | Graph exploration |
 
 ---
 
@@ -271,11 +313,12 @@ ENTITY_MIN_CONFIDENCE=0.7
 
 Potential improvements for future versions:
 
-- Graph visualization dashboard
+- ~~Graph visualization dashboard~~ ✅ Implemented (D3.js interactive viewer)
 - Community detection (topic clusters)
 - Temporal edges (time-based connections)
 - Multi-language entity extraction
 - Export to graph formats (GraphML, GEXF)
+- Entity-count penalty for hub suppression
 
 ---
 
@@ -331,6 +374,17 @@ similarity = dot(embedding_a, embedding_b) / (norm(a) * norm(b))
 ```python
 for edge in node.edges:
     neighbor.activation += node.activation * edge.weight * decay_factor
+```
+
+**Blend Scoring:**
+```python
+# Normalize activations to 0-1 range
+max_act = max(activations.values())
+normalized = {k: v/max_act for k, v in activations.items()}
+
+# Blend with semantic similarity
+alpha = float(os.getenv("BLEND_ALPHA", "0.7"))
+final_score = alpha * semantic_sim + (1 - alpha) * normalized_activation
 ```
 
 ---

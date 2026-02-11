@@ -177,6 +177,10 @@ ACTIVATION_DECAY=0.7
 
 # Minimum similarity for semantic links (0.3-0.8)
 SIMILARITY_THRESHOLD=0.5
+
+# Blend scoring: balance between semantic similarity and graph activation
+# 1.0 = pure semantic, 0.0 = pure spreading activation
+BLEND_ALPHA=0.7
 ```
 
 ### Temporal Decay
