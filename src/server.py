@@ -49,6 +49,13 @@ def create_app():
     bm25_docs = [(n["id"], n.get("content", "")) for n in nodes]
     get_bm25_index().build(bm25_docs)
     
+    # Pre-load reranker model if enabled
+    from reranker import get_reranker, RERANK_ENABLED
+    if RERANK_ENABLED:
+        get_reranker()._load_model()
+    else:
+        print("ℹ️  Reranker disabled (set RERANK_ENABLED=true to enable)")
+    
     # Register MCP endpoint
     create_mcp_endpoint(app)
     

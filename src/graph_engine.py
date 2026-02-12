@@ -422,6 +422,25 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     # Testing showed PAGERANK_BOOST > 0 causes P@5 regression
     # PageRank is available via neural_stats for analysis
     
+    # Step 6.5: Cross-encoder reranking (optional)
+    # Rerank top-N candidates using cross-encoder for improved precision
+    from reranker import get_reranker, RERANK_ENABLED, RERANK_TOP_N
+    if RERANK_ENABLED:
+        reranker = get_reranker()
+        if reranker.is_available:
+            # Get top-N candidates with their content for reranking
+            pre_sorted = sorted(blended.items(), key=lambda x: x[1], reverse=True)[:RERANK_TOP_N]
+            rerank_candidates = []
+            for node_id, score in pre_sorted:
+                node = node_map.get(node_id)
+                content = node.get("content", "") if node else ""
+                rerank_candidates.append((node_id, score, content))
+            
+            # Rerank and update blended scores
+            reranked = reranker.rerank(query, rerank_candidates, top_k=RERANK_TOP_N)
+            for node_id, new_score in reranked:
+                blended[node_id] = new_score
+    
     # Step 7: Sort and return top results
     sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
     

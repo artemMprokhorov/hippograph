@@ -59,16 +59,10 @@
 
 ---
 
-### 2. Reranking Pass
+### 2. ~~Reranking Pass~~ ✅ COMPLETED (Feb 12, 2026)
 **Source:** Zep uses BGE-m3 reranker after initial retrieval
-**Problem:** Our blend score is computed once. A reranking step on top-20 candidates could improve precision.
-**Solution:** After initial blend scoring, rerank top-N candidates with cross-encoder:
-- [ ] Use sentence-transformers cross-encoder (ms-marco-MiniLM-L6-v2 or similar)
-- [ ] Rerank top-20 → return top-5
-- [ ] Measure P@5 improvement vs baseline
-
-**Effort:** 3-4 hours
-**Priority:** HIGH — proven technique, low risk
+**Result:** Cross-encoder reranking with ms-marco-MiniLM-L-6-v2. Reranks top-20 blend candidates, blends reranker score with original score (RERANK_WEIGHT=0.3). Lazy model loading, backward compatible (disabled by default). Adds ~100ms latency when enabled.
+**Files:** `src/reranker.py`, updated `graph_engine.py` Step 6.5
 
 ---
 

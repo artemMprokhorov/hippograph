@@ -40,6 +40,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
 - **BM25 keyword search** — Okapi BM25 inverted index for exact term matching, integrated into blend scoring
+- **Cross-encoder reranking** — Optional ms-marco-MiniLM reranker for precision improvement on top-N candidates
 - **Context window protection** — brief/full detail modes, token estimation, progressive loading
 - **Note versioning** — auto-save history, restore previous versions
 - **Graph visualization** — D3.js interactive viewer with REST API
@@ -216,6 +217,8 @@ Search Query
                                                                  ↓
                               Blend Scoring (α×semantic + β×spread + γ×BM25)
                                            ↓
+                              Cross-Encoder Reranking (optional, top-20)
+                                           ↓
                                   Temporal Decay + Importance Boost
 ```
 
@@ -280,6 +283,7 @@ hippograph/
 │   ├── database.py            # Graph database layer
 │   ├── graph_engine.py        # Spreading activation + blend scoring
 │   ├── bm25_index.py          # Okapi BM25 keyword search index
+│   ├── reranker.py            # Cross-encoder reranking pass
 │   ├── entity_extractor.py    # spaCy NER + regex extraction
 │   ├── stable_embeddings.py   # Embedding model
 │   └── mcp_sse_handler.py     # MCP protocol
