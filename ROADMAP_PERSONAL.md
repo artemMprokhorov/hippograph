@@ -1,210 +1,185 @@
-# HippoGraph - Personal Use Roadmap
+# HippoGraph - Personal Roadmap
 
-**Target:** Single user, 200-2,000 notes, personal knowledge management
-
-**Philosophy:** Keep all memories. Natural patterns over forced deletion. Quality over scale.
-
----
-
-## 🎯 HIGH PRIORITY - Critical for Personal Use
-
-### 1. Entity Extraction Quality ✅ COMPLETE
-**Completed:** Feb 3, 2026  
-**Goal:** Better signal-to-noise ratio for personal memory context
-
-**Implemented:**
-- [x] Filter generic words (GENERIC_STOPWORDS set)
-- [x] Filter standalone numbers (isdigit() check)
-- [x] MIN_ENTITY_LENGTH = 2 (skip single chars)
-- [x] Fixed entity type mappings (ANN: tech, LLM: concept)
-- [x] Skip NUMBER types from spaCy (CARDINAL/ORDINAL)
-
-**Success Metric:** ✅ Noise significantly reduced
-**Files:** `src/entity_extractor.py`
+**Target:** Single user, 500-2,000 notes, personal knowledge management + research
+**Philosophy:** Keep all memories. Natural patterns over forced deletion. Zero LLM cost.
+**Last Updated:** February 12, 2026
 
 ---
 
-### 2. Note Versioning ✅ COMPLETE
-**Completed:** Feb 3-4, 2026  
-**Goal:** Recover from accidental overwrites
+## ✅ COMPLETED
 
-**Implemented:**
-- [x] Auto-save version before each update
-- [x] Store last 5 versions (configurable)
-- [x] View version history (get_note_history MCP tool)
-- [x] Restore from previous version (restore_note_version MCP tool)
-- [x] Database migration: note_versions table
+### Core Infrastructure (Phase 1-2)
+- [x] Graph-based architecture (nodes, edges, entities)
+- [x] MCP protocol integration (Claude.ai)
+- [x] ANN indexing (hnswlib) — O(log n) similarity search
+- [x] In-memory graph cache — O(1) neighbor lookup
+- [x] Activation normalization + damping
+- [x] spaCy entity extraction + multilingual NER (EN + RU)
+- [x] Test infrastructure (30 real tests)
+- [x] Docker deployment on Mac Studio M3 Ultra
 
-**Success Metric:** ✅ Can recover accidentally overwritten notes
-**Files:** `src/database.py`, `src/mcp_sse_handler.py`
+### Search & Retrieval
+- [x] Blend scoring (α=0.7 semantic + 0.3 spreading activation)
+- [x] Context window protection (brief/full modes)
+- [x] Category, time range, entity type filters
+- [x] Duplicate detection (similarity threshold)
+- [x] Hub node penalty (entity count-based)
+- [x] P@5 = 82%, Top-1 = 100% on internal benchmark
 
----
+### Memory Features
+- [x] Note versioning (5 versions, history, restore)
+- [x] Importance scoring (critical/normal/low)
+- [x] Emotional context (tone, intensity, reflection)
+- [x] Batch knowledge import (196 skills imported)
 
-### 3. Graph Visualization ✅ COMPLETE
-**Completed:** Feb 5, 2026  
-**Goal:** Visual exploration of memory connections
+### Visualization & Analytics
+- [x] D3.js force-directed graph viewer + timeline
+- [x] Graph metrics: PageRank + community detection (5 communities)
+- [x] neural_stats: top PageRank nodes, community sizes, isolated count
 
-**Implemented:**
-- [x] D3.js force-directed layout viewer
-- [x] Interactive node exploration
-- [x] Filter by category, entity type, search
-- [x] Real-time stats (nodes, edges, entities)
-- [x] Refresh button for live updates
-- [x] REST API endpoints (`/api/graph-data`, `/api/node/<id>`)
-- [x] Full graph loading (all 593 nodes via REST, not search)
-- [x] Click-to-detail (load full note content on demand)
-- [x] Performance cap (5000 links max for browser)
-- [x] Timeline animation with autoplay
+### Memory Hygiene (All 5 Phases)
+- [x] Phase 1: Test cleanup (24 notes deleted)
+- [x] Phase 2: Session-end deduplication (24→14)
+- [x] Phase 3: Skill isolation (58K entity edges removed)
+- [x] Phase 4: Multilingual NER deployment
+- [x] Phase 4.5: Entity re-extraction (587 notes)
+- [x] Phase 5: Category normalization (93→68 categories)
 
-**Success Metric:** ✅ Can visually explore full 593-node, 48K-edge graph
-**URL:** http://localhost:5002  
-**Files:** `web/index.html`, `nginx.conf`, `src/server.py`
-
----
-
-### 4. Batch Knowledge Import ✅ COMPLETE
-**Completed:** Feb 5, 2026  
-**Goal:** Import large skill sets without context window limits
-
-**Implemented:**
-- [x] Direct SQLite import script (scripts/add_skills.py)
-- [x] JSON format for bulk skills
-- [x] Duplicate detection by skill name
-- [x] Category support (security-critical, development, ml-architecture)
-- [x] SKILL.md → JSON converter (scripts/convert_to_json.py)
-
-**Success Metric:** ✅ Imported 196 skills (37 duplicates skipped)
-**Files:** `scripts/add_skills.py`, `scripts/convert_to_json.py`, `scripts/README.md`
+**Current State:** 587 nodes, 47,924 edges, 1,721 entities, 68 categories
 
 ---
 
-### 5. Retrieval Quality Testing ✅ COMPLETE
-**Completed:** Feb 11-12, 2026  
-**Goal:** Measure and improve search relevance
+## 🔥 HIGH PRIORITY — Next Development Cycle
 
-**Root Cause Found (Feb 6):**
-Hub nodes (project-status, milestones with many entities) accumulate activation
-from many neighbors via spreading activation, dominating results regardless of
-query semantics.
+### 1. BM25 Hybrid Search
+**Source:** Zep/Graphiti competitive analysis
+**Problem:** Our search is semantic-only + entity graph. Exact keyword matches (API names, error codes, specific terms) get lost in semantic similarity.
+**Solution:** Add BM25 keyword scoring as third signal:
+```
+final = α × semantic + β × spreading + γ × BM25
+```
+**Implementation:**
+- [ ] Add rank-bm25 or custom Okapi BM25 on note content
+- [ ] Build inverted index at startup (alongside ANN + graph cache)
+- [ ] Integrate into blend scoring with tunable γ parameter
+- [ ] Benchmark: expect P@5 improvement on exact-term queries
 
-**Blend Scoring Implemented (Feb 11):**
-`final_score = α × semantic_similarity + (1-α) × spreading_activation`
-- Default α=0.6, tuned to α=0.7 for optimal results
-- Spreading activation normalized to 0-1 range before blending
-- BLEND_ALPHA env var for runtime tuning
-
-**Importance Rebalancing (Feb 12):**
-- 31 session-end/handoff notes downgraded from critical → normal
-- Removed artificial boost for generic multi-topic notes
-
-**Results:**
-- P@5: 70% → 80% → **82%** ✅ TARGET MET
-- Top-1 accuracy: 80% → **100%**
-- 10 test queries, formal three-phase comparison
-
-**Known Bug:** ~~hnswlib add_vector() at runtime — notes invisible until container restart.~~ ✅ FIXED Feb 12.
-Root cause: graph_cache not updated on add_note. Entity and semantic edges were created in DB but not in in-memory cache, giving new notes spread=0 in blend scoring.
-Fix: call graph_cache.add_edge() after each create_edge() in add_note flow.
-
-**Success Metric:** ✅ >80% precision@5 achieved  
-**Files:** `src/graph_engine.py`, `docker-compose.yml`
+**Effort:** 4-6 hours
+**Priority:** HIGH — addresses known weakness in current retrieval
 
 ---
 
-### 6. Context Window Protection ✅ COMPLETE
-**Completed:** Feb 6, 2026  
-**Problem:** MCP returns full activation paths → Claude context overflow at ~500+ nodes
+### 2. Reranking Pass
+**Source:** Zep uses BGE-m3 reranker after initial retrieval
+**Problem:** Our blend score is computed once. A reranking step on top-20 candidates could improve precision.
+**Solution:** After initial blend scoring, rerank top-N candidates with cross-encoder:
+- [ ] Use sentence-transformers cross-encoder (ms-marco-MiniLM-L6-v2 or similar)
+- [ ] Rerank top-20 → return top-5
+- [ ] Measure P@5 improvement vs baseline
 
-**Implemented:**
-- [x] `max_results` parameter (hard limit, default: 10, Top-K truncation)
-- [x] `detail_mode` parameter ("brief" first line + metadata / "full" complete content)
-- [x] `estimate_tokens` (~4 chars per token rough estimation)
-- [x] Metadata with `truncated` flag
-- [x] `search_with_activation_protected()` in graph_engine.py
-- [x] Brief mode: first line + metadata (chars, lines, importance, emotional context)
-- [x] Fixed `total_activated`: shows real activated count before truncation
-- [x] Fixed `truncated` logic: `total_activated > returned` (was `limit > max_results`)
-
-**Success Metric:** ✅ Brief mode ~224 tokens for 3 results vs ~1500 for full mode
-**Files:** `src/graph_engine.py`, `src/mcp_sse_handler.py`
+**Effort:** 3-4 hours
+**Priority:** HIGH — proven technique, low risk
 
 ---
 
-### 7. CLI/TUI Interface ⏳ PLANNED
-**Status:** Not started  
+### 3. LOCOMO Benchmark Adapter
+**Source:** Competitive analysis — all competitors report on standard benchmarks
+**Problem:** Our P@5=82% is internal-only. Can't compare directly with Mem0 (LOCOMO J=66.9%), Zep (DMR=94.8%), Letta (LoCoMo=74.0%).
+**Solution:** Adapt our search to LOCOMO benchmark format:
+- [ ] Load LOCOMO dataset (multi-session conversation pairs)
+- [ ] Map LOCOMO queries to our search_with_activation API
+- [ ] Report J-score, F1, accuracy in standardized format
+- [ ] Compare with published results
+
+**Effort:** 6-8 hours (dataset integration + evaluation script)
+**Priority:** HIGH — required for any publication or credible comparison
+
+---
+
+## 🎯 MEDIUM PRIORITY — Quality of Life
+
+### 4. Sleep-Time Compute (Phase 3 Foundation)
+**Source:** Letta's innovation — memory refinement during idle
+**Idea:** When system is idle, run background processes:
+- [ ] Consolidate similar notes (suggest merges)
+- [ ] Detect stale connections (decay unused edges)
+- [ ] Refresh community detection periodically
+- [ ] Pre-compute embeddings for new content patterns
+
+**Relevance:** Directly feeds into Phase 3 multi-agent architecture. The "sleeping" agent could be our second agent with TrueRNG entropy source.
+
+**Effort:** 1-2 weeks (design + implementation)
+**Priority:** MEDIUM — research value, not urgent for daily use
+
+---
+
+### 5. CLI/TUI Interface
 **Problem:** Web viewer + MCP only, no quick terminal access
-
 **Tasks:**
 - [ ] Simple Python CLI: `hippograph add/search/stats`
-- [ ] Uses same MCP endpoint (no new backend code)
+- [ ] Uses REST API (no new backend code)
 - [ ] Optional: Rich TUI for interactive browsing
 
-**Estimated:** 2-3 hours
+**Effort:** 2-3 hours
+**Priority:** MEDIUM
 
 ---
 
-## 🎯 MEDIUM PRIORITY - Quality of Life
+### 6. Search Quality Monitoring
+- [ ] Query logs (timestamp, query, results, latency)
+- [ ] Automated P@5 regression testing on deploy
+- [ ] Latency tracking (P50, P95, P99)
 
-### Retrieval Quality Monitoring
-- [ ] Query logs (timestamp, query, results count, top activations)
-- [ ] Basic metrics: hit rate, avg results, latency
-- [ ] CSV export for analysis
-
-### Connection Quality (Natural Patterns)
-- [ ] Track activation frequency per edge
-- [ ] Automatic weight decay for unused connections
-- [ ] Boost frequently co-activated edges
-- [ ] "Dormant connection" state (very low weight, not deleted)
-
-### Batch Operations
-- [ ] Bulk add notes from JSON/markdown
-- [ ] Bulk update categories/importance
-
-### Saved Searches & Note Templates
-- [ ] Save frequent search queries with names
-- [ ] Session summary template
-- [ ] Breakthrough insight template
+**Effort:** 3-4 hours
+**Priority:** MEDIUM
 
 ---
 
-## ❌ OUT OF SCOPE - Personal Use
+## 🔬 RESEARCH — Phase 3 & Beyond
 
-**Moved to ROADMAP_ENTERPRISE.md:**
-- Bulk delete operations
+### Multi-Agent Architecture
+- [ ] Second AI agent with TrueRNG hardware entropy
+- [ ] Autonomous multi-agent experiments
+- [ ] Cross-agent memory sharing protocol
+- [ ] Sleep-time compute integration
+
+### Academic Publication
+- [ ] LOCOMO benchmark results (see #3 above)
+- [ ] Methodology paper: spreading activation for AI memory
+- [ ] Comparative analysis: zero-LLM-cost vs LLM-dependent approaches
+- [ ] Identity continuity experiments documentation
+
+### Real-Time Graph Visualization
+- [ ] Live graph updates via WebSocket
+- [ ] Community highlighting in viewer
+- [ ] PageRank-based node sizing
+- [ ] Temporal playback improvements
+
+---
+
+## ❌ OUT OF SCOPE (Personal)
+
+Moved to ROADMAP_ENTERPRISE.md:
+- Multi-tenant isolation
+- Cloud managed service
+- SSO/OAuth
+- Horizontal scaling
+- SOC2/GDPR compliance
+- Multi-framework integration (LangChain, CrewAI)
+- Bulk delete/cleanup operations
 - Graph-wide rollback
-- Context window trimming by deletion
-- Smart chain trimming by removal
-- Multi-tenancy, user auth, permissions
-- GraphSAGE / Neo4j indices
-- PageRank normalization
-- Horizontal scaling / sharding
 
 ---
 
-## 🤝 Development Philosophy
+## 📊 Competitive Position (Feb 2026)
 
-1. **Keep All Memories** - No deletion. Pruning is enterprise-only.
-2. **Natural Memory Patterns** - Fade/decay like real memory, not database DELETE.
-3. **Secure by Default** - Localhost unless explicitly opened.
-4. **Quality over Scale** - 2000 notes well-organized > 10k poorly organized.
-5. **Practical over Perfect** - Working solution > theoretically optimal.
-6. **Iterative** - Ship, use, learn, improve.
-7. **Ethical Design** - Don't implement operations harmful to memory integrity.
+| Metric | HippoGraph | Mem0 | Zep | Letta | doobidoo |
+|--------|-----------|------|-----|-------|----------|
+| LLM Cost | **$0** | ~$0.01/note | ~$0.02/note | ~$0.05/note | $0 |
+| Retrieval | Spread+Semantic | Vector+Graph | BM25+Semantic+Graph | Agent-driven | Vector-only |
+| Latency | 200-500ms | P95=1.44s | P95=300ms | varies | 5ms (cached) |
+| Graph | ✅ Spreading | ✅ Mem0ᵍ | ✅ Temporal KG | ❌ | ❌ |
+| Emotional | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Self-hosted | ✅ | ✅+Cloud | ✅+Cloud | ✅+Cloud | ✅ |
 
----
-
-## 📊 Current Status (Feb 11, 2026)
-
-- **Nodes:** 611
-- **Edges:** 55,284
-- **Entities:** 1,036
-- **ANN Vectors:** 611 (all nodes indexed, backfill complete)
-- **MCP Tools:** 10/10 verified
-- **Graph Viewer:** REST API loading all nodes
-- **Completed:** 6/7 HIGH PRIORITY
-- **In Progress:** CLI/TUI Interface (#7)
-- **DeepWiki:** https://deepwiki.com/artemMprokhorov/hippograph
-
----
-
-**Last Updated:** Feb 12, 2026
+**Our niche:** Zero-LLM-cost, spreading activation, associative memory research. Nobody else does this.

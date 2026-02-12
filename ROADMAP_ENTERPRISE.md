@@ -1,666 +1,166 @@
-# Neural Memory Graph - Development Roadmap
+# HippoGraph - Enterprise Roadmap
 
-## Current Status: Phase 2 - Performance & Quality (In Progress)
+**Target:** Multi-user deployment, 10K-100K+ notes, production workloads
+**Philosophy:** Performance at scale. Proven techniques from competitors. LLM-optional.
+**Last Updated:** February 12, 2026
 
-**Last Updated:** January 27, 2026  
-**Deployment:** Production-ready implementation  
-**Current Stats:** 267 nodes, 17,500+ edges, in-memory graph cache, activation normalized
-
----
-
-## 🔥 HIGH PRIORITY (Expert Feedback - Jan 27, 2026)
-
-### ✅ 1. ANN Indexing (COMPLETE)
-**Status:** Implemented and deployed  
-**Commit:** dcb7d32  
-**Achievement:** O(log n) similarity search using FAISS IndexFlatIP  
-- Replaced linear O(n) scan with approximate nearest neighbor search
-- IndexFlatIP for normalized vectors (Inner Product = cosine similarity)
-- Auto-rebuild index on server startup
-- Fallback to linear scan if ANN disabled
-- **Result:** Faster search, especially for 500+ nodes
-
-### ✅ 2. Activation Normalization + Damping (COMPLETE)
-**Status:** Implemented and deployed  
-**Commit:** 6b4b9e9  
-**Problem:** Activation scores grew unbounded (2520+) causing poor ranking  
-**Solution:** Normalize to 0-1 range after each spreading iteration
-- Scale all activations by max value → max always = 1.0
-- Apply decay factor before spreading
-- Debug logging for iteration diagnostics
-- **Result:** Scores bounded (2.5 vs 2520), stable across iterations
-
-### ✅ 3. Enhanced spaCy Entity Extraction (COMPLETE)
-**Status:** Implemented and deployed  
-**Commit:** 781f5b3  
-**Achievement:** 3-6x more entities detected with confidence scores
-- Expanded KNOWN_ENTITIES from 12 to 80+ terms
-- Added 60+ tech terms: PyTorch, FAISS, Docker, PostgreSQL, etc
-- Added 15+ AI/ML concepts: embeddings, attention, RAG, etc
-- Enhanced SPACY_LABEL_MAP with 13 entity types (was 8)
-- Confidence scores: 1.0 for known, 0.8 for spaCy NER
-- Improved deduplication with normalize_entity()
-- Graceful fallback: spaCy → regex on error
-**Result:** Test showed 18 entities vs 3-5 before
-**Files:** `src/entity_extractor.py`
-
-### ✅ 4. In-Memory Graph Cache (COMPLETE)
-**Status:** Implemented  
-**Commit:** TBD  
-**Problem:** SQLite JOIN bottleneck in graph traversal (Step 2-3 of spreading)
-- get_connected_nodes() did SQL JOIN on every hop
-- On 10-20K edges, SQLite becomes bottleneck
-**Solution:** Load all edges into RAM at startup
-- Created graph_cache.py with GraphCache singleton
-- Structure: {node_id: [(neighbor_id, weight, edge_type), ...]}
-- O(1) dict lookup instead of O(n) SQL JOIN
-- Auto-rebuild on server startup alongside ANN index
-**Performance:** ~100,000x faster neighbor lookup
-- OLD: 10-50ms per SQL JOIN
-- NEW: 0.0002ms per dict lookup
-**Result:** Spreading activation fully in-memory, SQLite only for cold storage
-**Files:** `src/graph_cache.py`, `src/database.py`, `src/graph_engine.py`, `src/server.py`
-
-### ✅ 5. Tests Infrastructure (pytest) (COMPLETE)
-**Status:** Implemented and deployed  
-**Commit:** Various commits in Jan 28, 2026  
-**Achievement:** Comprehensive test suite with 17 tests
-- Unit tests for graph_engine.py (spreading activation, ANN, graph cache)
-- Integration tests for MCP tools (search, CRUD, performance)
-- Test fixtures with sample graph data
-- pytest configuration with markers (unit, integration, slow)
-- **Result:** All 17 tests passing, test coverage for core functionality
-**Files:** `tests/test_graph_engine.py`, `tests/test_integration.py`
-
-### ✅ 6. Semantic Links Bug Fix (COMPLETE - Feb 3, 2026)
-**Status:** Critical bug discovered and fixed  
-**Commit:** d4f0b90  
-**Problem:** New notes weren't getting semantic links after note #201
-- add_note_with_links() used O(n) linear scan for both duplicate check and semantic link creation
-- On 325+ notes, this became too slow
-- New notes got entity links but ZERO semantic links
-**Solution:** Replace linear scan with ANN index search
-- Duplicate check: ann_index.search(k=5, min_similarity=DUPLICATE_THRESHOLD)
-- Semantic links: ann_index.search(k=MAX_SEMANTIC_LINKS*2, min_similarity=SIMILARITY_THRESHOLD)
-- Fallback to linear scan if ANN disabled
-**Result:** O(log n) performance, new notes now get semantic links automatically
-**Files:** `src/graph_engine.py`
-
-### ✅ 7. Filtered Search by Category (COMPLETE - Feb 3, 2026)
-**Status:** Implemented and deployed  
-**Commit:** e8168ba  
-**Achievement:** Add category filtering to search_memory tool
-- Added category_filter parameter to search_with_activation()
-- Filter applied after spreading activation but before limit
-- MCP tool updated with category parameter
-- Example: search_memory(query="bug fix", category="breakthrough")
-**Result:** Can now search within specific categories
-**Files:** `src/graph_engine.py`, `src/mcp_sse_handler.py`
+> ⚠️ This roadmap is aspirational. Current focus is personal/research use.
+> Enterprise features are documented for completeness based on competitive analysis.
 
 ---
 
-## 🎯 MEDIUM PRIORITY
+## Tier 1: Multi-User Foundation
 
-### 6. Incremental Updates
-- Update existing nodes without full rebuild
-- Add single vectors to ANN index without recreation
+### 1. Multi-Tenant Isolation
+**Source:** Mem0, Zep, Letta all support multi-user
+**Tasks:**
+- [ ] User ID column in nodes/edges/entities tables
+- [ ] API key → user mapping
+- [ ] Per-user ANN indices
+- [ ] Per-user graph cache partitions
+- [ ] Per-user PageRank/community computation
 
-### 7. Edge Pruning
-- Remove weak semantic connections (similarity < threshold)
-- Optimize graph structure for better spreading
-
-### 8. Graph Metrics
-- PageRank for node importance
-- Community detection (Louvain algorithm)
-- Centrality measures
-
-### 9. Search Quality Metrics
-- Recall@k measurement
-- Precision tracking
-- User feedback collection
-
-### 10. LLM-based Entity Extraction (Optional)
-**Note:** Moved from HIGH to MEDIUM priority  
-**Reason:** Massive overhead for personal use case
-- Ollama requires 3-7GB Docker image
-- 4-12GB RAM constant usage
-- 2-5 seconds per note (vs 100ms with spaCy)
-- For 200-500 notes, spaCy is pragmatic choice
-**Alternative:** Remote Claude API for critical cases only
+**Effort:** 1-2 weeks
 
 ---
 
-### Search Enhancement
-- [x] **Filtered Search** - Search by category ✅ (Feb 3, 2026 - commit e8168ba)
-- [x] **Time Range Filter** - Filter by date/time range ✅ (Feb 3, 2026 - commit 0645fd2)
-- [x] **Entity Type Filter** - Filter by entity type ✅ (Feb 3, 2026 - commit 85aef4f)
-- [ ] **Saved Searches** - Store frequent search patterns
-- [ ] **Search History** - Track and replay past searches
+### 2. LLM-Based Entity Extraction (Ollama)
+**Source:** Mem0/Zep use LLM for entity extraction — higher quality than spaCy
+**Approach:** Optional Ollama sidecar for enhanced extraction:
+- [ ] Ollama container alongside hippograph
+- [ ] Fallback chain: Ollama → spaCy (zero-cost default)
+- [ ] Configurable per-user: LLM extraction on/off
+- [ ] Relationship extraction (not just entities)
 
-### Entity Extraction
-- [ ] **LLM-based Extraction** - More accurate entity detection
-- [ ] **Custom Entity Types** - User-defined entity categories
-- [ ] **Entity Relationships** - Extract relationships between entities
-- [ ] **Multi-language Support** - Non-English entity extraction
-
-### Performance & Scale
-- [ ] **Batch Operations** - Bulk add/update/delete
-- [ ] **Incremental Embeddings** - Compute embeddings on-demand
-- [ ] **Caching Layer** - Redis for frequent queries
-- [ ] **Horizontal Scaling** - Multi-instance deployment
-
-### User Experience
-- [x] **Import/Export** - JSON export for backups ✅ (Feb 3, 2026 - commit c8e5777)
-  - Export: Complete (nodes, edges, entities)
-  - Import: Not yet implemented
-- [ ] **Graph Visualization** - Interactive D3.js graph view
-- [ ] **Note Templates** - Predefined note structures
-- [ ] **Auto-categorization** - ML-based category suggestions
+**Trade-off:** +3-7GB Docker image, +4-12GB RAM, 2-5s/note vs 100ms spaCy
+**Effort:** 1 week
 
 ---
 
-## 📊 Technical Debt
+### 3. Cloud Sync
+**Source:** doobidoo uses Cloudflare for cross-device sync
+**Tasks:**
+- [ ] Cloudflare Workers KV or D1 backend option
+- [ ] Bidirectional sync protocol
+- [ ] Conflict resolution (last-write-wins or merge)
+- [ ] Encryption at rest for cloud storage
 
-
----
-
-## 🔒 Security & Access Control
-
-### Network Access Levels (Implementation Required)
-
-**Current State:** Server runs on `0.0.0.0:5001` with ngrok tunnel - publicly accessible with API key protection only.
-
-**Proposed Implementation:** Three security tiers with explicit user choice:
-
-#### TIER 1: LOCALHOST ONLY (Default - Recommended)
-```python
-SERVER_HOST=127.0.0.1
-ENABLE_NGROK=false
-```
-**Security:**
-- ✅ Accessible only from local machine
-- ✅ No network exposure
-- ✅ Maximum security for personal use
-- ✅ No API key leakage risk
-
-**Limitations:**
-- ❌ Cannot access from other devices
-- ❌ No MCP integration with claude.ai (requires public access)
-
-**Use Case:** Personal knowledge management on single machine
+**Effort:** 2 weeks
 
 ---
 
-#### TIER 2: LOCAL NETWORK (Optional - Use with Caution)
-```python
-SERVER_HOST=0.0.0.0  # Listen on all interfaces
-ENABLE_NGROK=false
-```
-**Security:**
-- ⚠️  Accessible to any device on your LAN
-- ⚠️  Anyone on your WiFi can access your memory graph
-- ✅ Not exposed to internet
-- ⚠️  API key required but can be sniffed on local network
+## Tier 2: Search & Retrieval at Scale
 
-**Limitations:**
-- ❌ No MCP integration with claude.ai
-- ⚠️  Trust required for all LAN users
+### 4. Bi-Temporal Model
+**Source:** Zep/Graphiti tracks "when fact was true" vs "when ingested"
+**Tasks:**
+- [ ] Add t_valid, t_invalid columns to edges
+- [ ] Temporal queries: "what was true on date X?"
+- [ ] Fact invalidation without deletion
+- [ ] Historical graph reconstruction
 
-**Use Case:** Multi-device access on trusted home network
+**Effort:** 1-2 weeks
 
 ---
 
-#### TIER 3: PUBLIC ACCESS (Optional - High Risk)
-```python
-SERVER_HOST=0.0.0.0
-ENABLE_NGROK=true
-NGROK_AUTHTOKEN=your_token
-API_KEY=strong_random_key  # REQUIRED
-```
-**Security:**
-- ⚠️  Publicly accessible from internet
-- ⚠️  API key is only protection
-- ⚠️  Memory contents exposed if key compromised
-- ⚠️  ngrok URL can be shared/leaked
-- ⚠️  Rate limiting recommended
-
-**Limitations:**
-- ⚠️  Requires trust in ngrok service
-- ⚠️  Potential for unauthorized access
-- ⚠️  Data transmitted over internet
-
-**Use Case:** MCP integration with claude.ai, remote access
-
-**REQUIRED Security Measures:**
-1. Strong random API key (32+ characters)
-2. HTTPS only (ngrok provides this)
-3. Rate limiting on endpoints
-4. Audit logs for access attempts
-5. Regular key rotation
-
----
-
-### Implementation Tasks
-
-- [ ] **Default to localhost** - Change default SERVER_HOST to 127.0.0.1
-- [ ] **Security warnings in .env.example** - Document risks for each tier
-- [ ] **README security section** - Clear warnings about network/public access
-- [ ] **Startup warnings** - Print security tier to console on server start
-- [ ] **Configuration validation** - Reject public access without strong API key
-
-### Documentation Requirements
-
-Each tier must have:
-1. Clear security implications
-2. Specific use cases
-3. Required precautions
-4. Migration path between tiers
-
-**Philosophy:** Secure by default, explicit opt-in for exposure, informed user choice.
-
-## 🏢 Phase 4: Enterprise Features (FUTURE - For Production Use)
-
-*Note: Current implementation is optimized for personal use (~200-1000 notes). The following features would be required for enterprise deployment at scale.*
-
----
-
-## 🆕 ADDITIONAL FEEDBACK - Feb 4, 2026
-
-**Source:** External review for enterprise-level deployment (5K-10K notes)
-
-### Database Operations (Enterprise Only)
-
-#### **Bulk Delete/Cleanup Operations** 
-**Request:** Delete edges < weight X, remove orphan nodes, category purging
-
-**Implementation:**
-- [ ] Bulk edge deletion by weight threshold
-- [ ] Orphan node cleanup (no connections + age filter)
-- [ ] Category-based bulk removal
-- [ ] Cascade delete with safety checks
-- [ ] Transaction rollback on errors
-
-**Why Enterprise Only:** Personal use philosophy is "fade, not delete". Enterprise databases need data management tools.
-
-**Safety:**
-- Mandatory backup before bulk operations
-- Dry-run mode with preview
-- Audit log of deletions
-- Undelete buffer (grace period)
-
----
-
-#### **Graph Versioning (Full State Snapshots)**
-**Request:** Rollback entire graph to previous state
-
-**Implementation:**
-- [ ] Periodic graph snapshots (nodes + edges + entities)
-- [ ] Differential backups (only changes)
-- [ ] Point-in-time restore
-- [ ] Version tagging (pre-recompute, pre-cleanup)
-- [ ] Storage optimization (compression, deduplication)
-
-**Why Enterprise Only:** 
-- High disk space cost (10K notes = ~100MB+ per snapshot)
-- Personal use has per-note versioning (sufficient)
-- Enterprise needs audit trail + disaster recovery
-
----
-
-#### **Model Hot-Swapping**
-**Request:** Switch embedding models without full recompute
-
-**Implementation:**
-- [ ] Multiple embedding models side-by-side
-- [ ] Lazy recompute (on-access migration)
-- [ ] Model performance comparison
-- [ ] A/B testing framework
-- [ ] Model registry (version, metrics, config)
-
-**Why Enterprise Only:**
-- Complex: requires dual-index support
-- Personal: one-time model selection sufficient
-- Enterprise: continuous optimization, multilingual needs
-
----
-
-### Retrieval & Monitoring (Applies to Both)
-
-#### **Advanced Search Reranking** ⭐
-**Request:** Multi-factor ranking beyond spreading activation
-
-**Implementation:**
-- [ ] Combine factors: graph distance + recency + importance + entity overlap
-- [ ] Query-specific weights (configurable per search)
-- [ ] Learning-to-rank from feedback
+### 5. Advanced Reranking Pipeline
+**Source:** Zep uses BGE-m3 for reranking after retrieval
+**Tasks:**
+- [ ] Cross-encoder reranker (BGE-m3 or ms-marco)
+- [ ] Multi-factor scoring: graph distance + recency + importance + entity overlap
+- [ ] Learning-to-rank from user feedback
 - [ ] Result diversity (avoid clustering)
-- [ ] Explanation scores (why this result?)
 
-**Priority:** HIGH for both personal + enterprise
-
----
-
-#### **Retrieval Quality Metrics** ⭐
-**Request:** Observability into search degradation
-
-**Implementation:**
-- [ ] Query logs (timestamp, query, results, latency)
-- [ ] Metrics: hit rate, recall@K, precision, NDCG
-- [ ] False positive tracking (entity links)
-- [ ] Performance dashboard
-- [ ] Alert on degradation thresholds
-
-**Priority:** MEDIUM for personal (research), HIGH for enterprise (SLA)
+**Effort:** 1 week
 
 ---
 
-#### **Context Window Management** ⭐⭐⭐
-**Request:** Prevent MCP overflow with large graphs
+### 6. Multi-Framework Integration
+**Source:** Mem0/Zep/Letta integrate with LangChain, CrewAI, AutoGen
+**Tasks:**
+- [ ] LangChain memory adapter
+- [ ] CrewAI knowledge source plugin
+- [ ] OpenAI-compatible REST API
+- [ ] SDK: Python + TypeScript
 
-**Implementation:**
-- [x] Token counting for results
-- [ ] Truncation strategies:
-  - Top-K most relevant
-  - Summary mode (compress chains)
-  - Progressive detail levels
-- [ ] `max_tokens` parameter in MCP
-- [ ] Smart trimming (keep salient, summarize rest)
-
-**Priority:** CRITICAL for both (blocks scaling beyond 500 notes)
+**Effort:** 2-3 weeks
 
 ---
 
-### Entity Resolution (Advanced - Enterprise)
+## Tier 3: Operations & Security
 
-#### **Entity Disambiguation & Coreference**
-**Request:** "Apple company vs fruit", pronoun resolution, synonym merging
+### 7. Authentication & Authorization
+- [ ] OAuth 2.0 / SSO (OIDC)
+- [ ] Role-based access control (RBAC)
+- [ ] API key management (rotation, scoping)
+- [ ] Audit logging (all changes with user/timestamp)
 
-**Implementation:**
-- [ ] Entity linking to knowledge base (Wikipedia, DBpedia)
-- [ ] Context-based disambiguation (surrounding text)
-- [ ] Coreference resolution (pronoun → entity)
+### 8. Observability
+- [ ] Prometheus metrics (latency, throughput, cache hit rates)
+- [ ] Structured logging (ELK stack)
+- [ ] Distributed tracing
+- [ ] Health checks beyond simple ping
+- [ ] Alert on retrieval quality degradation
+
+### 9. Performance at Scale
+- [ ] Production WSGI server (Gunicorn/Uvicorn)
+- [ ] PostgreSQL migration (from SQLite)
+- [ ] Read replicas for search-heavy workloads
+- [ ] Connection pooling
+- [ ] Horizontal scaling with load balancer
+
+### 10. Compliance
+- [ ] SOC 2 readiness
+- [ ] GDPR data handling (right to deletion, export)
+- [ ] Encryption at rest + in transit
+- [ ] Data residency options
+
+---
+
+## Tier 4: Advanced Features
+
+### Entity Resolution
+- [ ] Entity disambiguation ("Apple" company vs fruit)
+- [ ] Coreference resolution (pronouns → entities)
 - [ ] Synonym/acronym merging (ML → Machine Learning)
-- [ ] User feedback loop (confirm/correct)
+- [ ] Knowledge base linking (Wikipedia, DBpedia)
 
-**Why Enterprise Only:**
-- Complex: requires external KB + NLP pipeline
-- High maintenance: KB updates, model training
-- Personal: manual correction via notes sufficient
-- Enterprise: critical for automated knowledge extraction
+### Memory Lifecycle
+- [ ] Short-term memory (session-based, 24h TTL)
+- [ ] Long-term memory with reinforcement learning
+- [ ] Working memory cache (Redis/Valkey)
+- [ ] Automated consolidation (merge similar notes)
+- [ ] Access-based promotion (short-term → long-term)
 
----
-
-### User Interface (Enterprise)
-
-#### **Connection Approval Workflow**
-**Request:** Review auto-generated edges before commit
-
-**Implementation:**
-- [ ] Pending edges queue (not persisted until approved)
-- [ ] Web UI: approve/reject/defer
-- [ ] Confidence scores for auto-approval
-- [ ] Batch review mode
-- [ ] Smart suggestions (similar to approved edges)
-
-**Priority:** MEDIUM for personal (reduces noise), HIGH for enterprise (quality control)
+### Bulk Operations
+- [ ] Bulk delete by weight threshold / age / category
+- [ ] Graph-wide rollback (point-in-time snapshots)
+- [ ] Bulk import from Mem0 / doobidoo format
+- [ ] Export to standard formats (JSON-LD, RDF)
 
 ---
 
-#### **CLI/TUI Interface** ⭐
-**Request:** Quick terminal access without web viewer
+## Estimated Effort by Tier
 
-**Implementation:**
-- [ ] Python CLI: `hippograph add/search/stats/delete`
-- [ ] Rich TUI for interactive browsing
-- [ ] Config file (~/.hippograph/config.yaml)
-- [ ] Shell completions (bash/zsh)
-- [ ] Piping support (stdin/stdout)
-
-**Priority:** MEDIUM for both (developer experience)
+| Tier | Scope | Estimate |
+|------|-------|----------|
+| Tier 1 | Multi-user foundation | 4-5 weeks |
+| Tier 2 | Search at scale | 3-4 weeks |
+| Tier 3 | Operations & security | 4-6 weeks |
+| Tier 4 | Advanced features | 4-6 weeks |
+| **Total** | **Full enterprise** | **~4 months** |
 
 ---
 
-### ⚠️  Edge Pruning (Optional - Enterprise Only)
-**Status:** Implemented as optional script  
-**Commit:** TBD  
-**Why NOT recommended for personal use:**
-- Weak connections may become important as context grows
-- Distant memories are still valuable memories
-- Graph structure shows how ideas relate over time
-- Irreversible without backup
-
-**When to use (enterprise only):**
-- Very large databases (10k+ notes)
-- Performance issues from excessive edges
-- Regular backups in place
-- Acceptable to lose weak historical connections
-
-**Usage:**
-```bash
-# Analyze current edge distribution
-python3 scripts/prune_edges.py data/memory.db --analyze
-
-# Dry run (see what would be removed)
-python3 scripts/prune_edges.py data/memory.db --threshold 0.60
-
-# Actually remove (with backup!)
-python3 scripts/prune_edges.py data/memory.db --threshold 0.60 --confirm
-```
-
-**Files:** `scripts/prune_edges.py`
-
-### Graph Analytics & Intelligence
-- [ ] **Centrality Analysis** - Identify key nodes using PageRank, betweenness centrality
-- [ ] **Community Detection** - Automatic clustering of related knowledge domains
-- [ ] **Path Scoring** - Weighted pathfinding between concepts
-- [ ] **Graph Metrics Dashboard** - Network density, diameter, clustering coefficient
-- [ ] **Anomaly Detection** - Identify orphaned or over-connected nodes
-
-**Why:** At enterprise scale (10k+ notes), understanding network structure becomes critical for knowledge discovery and organization.
-
-### Memory Hierarchy & Lifecycle
-- [ ] **Short-term Memory** - Session-based working memory (24h retention)
-- [ ] **Long-term Memory** - Permanent storage with reinforcement learning
-- [ ] **Working Memory Cache** - Recently accessed nodes in fast storage
-- [ ] **Memory Consolidation** - Automated archival of stale content
-- [ ] **Access-based Promotion** - Frequently used short-term → long-term
-
-**Why:** Mimics human memory architecture; improves performance by tiering storage based on access patterns.
-
-### Architectural Improvements
-- [ ] **Layer Separation** - Clean boundaries between ingestion/storage/retrieval/reasoning
-- [ ] **Service-Oriented Architecture** - Separate microservices for each layer
-- [ ] **Event-Driven Processing** - Async message queues for note processing
-- [ ] **CQRS Pattern** - Separate read/write models for scaling
-- [ ] **API Gateway** - Unified entry point with rate limiting, auth
-
-**Why:** Current architecture mixes concerns for simplicity; enterprise needs clean separation for maintainability and scaling.
-
-### Security & Compliance
-- [ ] **Multi-tenancy** - Isolated memory spaces per user/organization
-- [ ] **Role-based Access Control** - Granular permissions on notes/categories
-- [ ] **Audit Logging** - Track all changes with timestamp/user
-- [ ] **Encryption at Rest** - Database-level encryption
-- [ ] **SOC 2 Compliance** - Security controls and audits
-
-**Why:** Enterprise data governance and regulatory requirements.
-
-### Observability & Operations
-- [ ] **Distributed Tracing** - Request flow across services
-- [ ] **Prometheus Metrics** - Query latency, throughput, cache hit rates
-- [ ] **Structured Logging** - Centralized log aggregation (ELK stack)
-- [ ] **Health Checks** - Deep health monitoring beyond simple ping
-- [ ] **Auto-scaling** - Horizontal pod autoscaling based on load
-
-**Why:** Production operations require deep visibility into system behavior.
-
-### Performance at Scale
-- [ ] **Vector Index Optimization** - HNSW/IVF-PQ for large-scale similarity search
-- [ ] **Read Replicas** - Database replication for read-heavy workloads
-- [ ] **Connection Pooling** - Efficient database connection management
-- [ ] **Materialized Views** - Pre-computed graph metrics
-- [ ] **CDN for Static Assets** - Distributed caching
-
-**Why:** Current SQLite + in-memory FAISS works for personal use but won't scale to millions of notes.
-
-### Estimated Effort
-- **Graph Analytics**: 2-3 weeks
-- **Memory Hierarchy**: 3-4 weeks
-- **Architecture Refactor**: 4-6 weeks
-- **Security/Compliance**: 2-3 weeks
-- **Observability**: 1-2 weeks
-- **Performance Optimization**: 2-3 weeks
-
-**Total: ~3-4 months** for enterprise-ready production deployment
-
-
-- [ ] Migrate from Flask development server to production WSGI (Gunicorn)
-- [ ] Add comprehensive error handling and retry logic
-- [ ] Implement rate limiting for MCP endpoints
-- [ ] Add structured logging with log levels
-- [ ] Security audit for production deployment
-- [ ] Performance profiling and optimization
-- [ ] Automated testing suite (unit + integration)
-- [ ] CI/CD pipeline
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-
-**Code:**
-- Entity extraction methods (spaCy improvements, custom NER)
-- Graph algorithms (spreading activation, clustering)
-- Performance optimizations (caching, batching)
-- Security hardening (rate limiting, authentication)
-
-**Documentation:**
-- Usage examples and tutorials
-- Architecture deep-dives
-- API client libraries (Python, TypeScript)
-- Video walkthroughs
-
-**Testing:**
-- Unit tests for core components
-- Integration tests for MCP protocol
-- Load testing for scaling
-- Security testing
-
-See [Contributing Guidelines](CONTRIBUTING.md) for details.
-
----
-
-## 📝 Version History
-
-### v2.0.0 (January 2026)
-- Graph-based architecture with nodes, edges, entities
-- MCP protocol integration
-- Temporal decay for recency weighting
-- Importance scoring (critical/normal/low)
-- Duplicate detection
-- spaCy NER entity extraction
-
-### v1.0.0 (December 2025)
-- Initial linear memory implementation
-- Semantic search with embeddings
-- Basic CRUD operations
-- Docker deployment
-
-### v0.1.0 (December 2025)
-- Proof of concept
-- SQLite storage
-- Sentence transformers
-
----
-
-## 📜 License
-
-MIT License - see [LICENSE](LICENSE)
-
----
-
-**Questions or suggestions?** Open an issue or discussion on GitHub!
-
----
-
-## 🗑️ PRUNING & DELETION OPERATIONS (Enterprise Only)
-
-**Philosophy:** These operations are FOR ENTERPRISE use cases with 10K+ notes where performance requires aggressive cleanup. NOT for personal knowledge management where "keep all memories" principle applies.
-
-### Bulk Delete Operations
-**Use Case:** Large knowledge bases needing cleanup
-
-**Tasks:**
-- [ ] Delete edges below weight threshold
-- [ ] Delete orphan nodes (no connections)
-- [ ] Delete by time range (older than X)
-- [ ] Delete by category batch
-- [ ] Confirmation prompts + dry-run mode
-- [ ] Backup before bulk delete
-
-**Safety:**
-- Require explicit confirmation
-- Log all deletions
-- Create backup before operation
-- Provide rollback mechanism
-
----
-
-### Context Window Trimming (Aggressive)
-**Use Case:** Very large graphs (5K+ nodes) where Top-K alone insufficient
-
-**Tasks:**
-- [ ] Smart chain trimming by removal (not just hiding)
-- [ ] Remove low-relevance branches from activation paths
-- [ ] Configurable relevance threshold for deletion
-- [ ] Keep only top N% of activated nodes permanently
-
-**Note:** Personal use should use Top-K + summarization instead
-
----
-
-### Connection Pruning
-**Use Case:** Edge count explosion (100K+ edges)
-
-**Tasks:**
-- [ ] Delete weak connections (confidence < threshold)
-- [ ] Delete edges never co-activated in N days
-- [ ] Prune duplicate semantic links
-- [ ] Remove transitive edges when direct path exists
-
-**Alternative for Personal:** Use weight decay + dormant state (no deletion)
-
----
-
-### Graph-Wide Rollback
-**Use Case:** Disaster recovery for enterprise deployments
-
-**Tasks:**
-- [ ] Snapshot entire graph state (nodes + edges + weights)
-- [ ] Point-in-time restoration
-- [ ] Differential backups (only changes since last snapshot)
-- [ ] Automated snapshot scheduling
-
-**Note:** Personal use has per-note versioning (sufficient for mistakes)
-
----
-
-**Enterprise vs Personal:**
-- Personal: Natural decay, keep all memories, observability
-- Enterprise: Aggressive pruning, performance over completeness, deletion allowed
-
-
-### Content Summarization (Lossy Compression)
-**Use Case:** Extreme scale (50K+ nodes) where even Top-K insufficient
-
-**Tasks:**
-- [ ] AI-powered summarization of long content
-- [ ] Compress activation chains into summaries
-- [ ] Store both original + summary (fallback to full)
-- [ ] Configurable: summary-only mode vs hybrid
-
-**Warning:** Information loss! Emotional context, nuances, details disappear.
-
-**Alternative for Personal:** Use progressive detail (user chooses when to see full)
-
+## Competitive Gaps to Close for Enterprise
+
+| Feature | Status | Competitor Reference |
+|---------|--------|---------------------|
+| Multi-tenant | ❌ Missing | Mem0, Zep, Letta |
+| BM25 hybrid | ❌ Missing (Personal roadmap #1) | Zep |
+| Standard benchmarks | ❌ Missing (Personal roadmap #3) | All |
+| Cloud deployment | ❌ Missing | Mem0 Cloud, Zep Cloud |
+| LLM entity extraction | ❌ Optional | Mem0, Zep |
+| Framework integrations | ❌ MCP only | All competitors |
+
+**Our enterprise differentiator:** Zero-LLM-cost base + optional LLM enhancement. Nobody else offers this hybrid approach.

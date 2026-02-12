@@ -1,49 +1,19 @@
 # HippoGraph Roadmap
 
-This project has **two separate roadmaps** for different use cases:
+This project has **two roadmaps** for different use cases:
+
+## [Personal Roadmap](ROADMAP_PERSONAL.md)
+For single-user, self-hosted deployment. Focus on search quality, research, and zero-LLM-cost operation.
+
+**Next priorities:** BM25 hybrid search, reranking, LOCOMO benchmark.
+
+## [Enterprise Roadmap](ROADMAP_ENTERPRISE.md)
+For multi-user, production deployment. Features from competitive analysis (Mem0, Zep, Letta, doobidoo).
+
+**Key gaps:** Multi-tenant, cloud sync, LLM-optional entity extraction.
 
 ---
 
-## 📱 [ROADMAP_PERSONAL.md](ROADMAP_PERSONAL.md) ← **Current Focus**
+**Current focus:** Personal roadmap. Enterprise is aspirational.
 
-**For:** Single user, 200-2,000 notes, personal knowledge management
-
-**Priorities:**
-- Entity extraction quality
-- Note versioning
-- Security tiers (localhost default)
-- Graph visualization
-- Retrieval quality testing
-
-**Philosophy:** Keep all memories, practical over perfect, secure by default
-
----
-
-## 🏢 [ROADMAP_ENTERPRISE.md](ROADMAP_ENTERPRISE.md) ← **Future Work**
-
-**For:** Production deployment, multi-user, 10k+ notes per user
-
-**Includes:**
-- Multi-tenancy & authentication
-- Advanced graph algorithms (PageRank, GraphSAGE)
-- Neo4j integration
-- Horizontal scaling
-- Federation
-
-**Status:** Deferred until personal use case is solid
-
----
-
-## 🎯 Current Development
-
-We are **focused on ROADMAP_PERSONAL.md** to make HippoGraph:
-1. Reliable for daily use
-2. Secure by default
-3. Easy to understand and navigate
-4. High signal-to-noise ratio
-
-Enterprise features will be addressed **after** personal use case is proven and stable.
-
----
-
-**Last Updated:** Feb 3, 2026
+**Last Updated:** February 12, 2026
