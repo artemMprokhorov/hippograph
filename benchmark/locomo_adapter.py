@@ -164,26 +164,22 @@ def parse_dataset():
 # STEP 3: Load conversations into HippoGraph
 # ============================================================
 
-def load_into_hippograph(conversations, api_url="http://localhost:5003", api_key=None):
-    """Load LOCOMO sessions as notes into HippoGraph via MCP-style JSON-RPC.
+def load_into_hippograph(conversations, api_url="http://localhost:5003", api_key=None,
+                         granularity="session"):
+    """Load LOCOMO into HippoGraph via REST API.
     
-    Granularity: session-level (one note per session).
-    Each note contains all turns concatenated with speaker labels.
-    Category: locomo-conv{N} for easy filtering per conversation.
-    
-    Uses the /sse MCP endpoint with JSON-RPC calls to add_note tool.
-    Alternatively, can POST directly if REST endpoints are available.
+    Granularity:
+    - "session": one note per session (~272 notes, avg 2692 chars)
+    - "turn": one note per dialogue turn (~5882 notes, avg 123 chars)
     
     For benchmark, runs against separate container (port 5003) with clean DB.
     """
     import urllib.request
     
-    headers = {
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
     
     total_loaded = 0
-    session_dia_map = {}  # Maps note_key to dia_ids for evaluation
+    session_dia_map = {}
     errors = []
     
     for conv in conversations:
@@ -191,70 +187,89 @@ def load_into_hippograph(conversations, api_url="http://localhost:5003", api_key
         speaker_a = conv["speaker_a"]
         speaker_b = conv["speaker_b"]
         
-        for session in conv["sessions"]:
-            # Build note content from turns
-            lines = []
-            dia_ids_in_session = []
-            timestamp = session["timestamp"]
-            lines.append(f"[{speaker_a} & {speaker_b} — Session {session['num']}, {timestamp}]")
-            
-            for turn in session["turns"]:
-                speaker = turn.get("speaker", "?")
-                text = turn.get("text", "")
-                dia_id = turn.get("dia_id", "")
-                if text:
-                    lines.append(f"{speaker}: {text}")
-                if dia_id:
-                    dia_ids_in_session.append(dia_id)
-            
-            content = "\n".join(lines)
-            category = f"locomo-conv{conv_id}"
-            note_key = f"conv{conv_id}-session_{session['num']}"
-            
-            session_dia_map[note_key] = {
-                "dia_ids": dia_ids_in_session,
-                "session_num": session["num"],
-                "conv_id": conv_id
-            }
-            
-            # POST via REST API (add_note endpoint)
-            payload = json.dumps({
-                "content": content,
-                "category": category
-            })
-            
-            req = urllib.request.Request(
-                f"{api_url}/api/add_note?api_key={api_key}",
-                data=payload.encode(),
-                headers=headers,
-                method="POST"
-            )
-            
-            try:
-                with urllib.request.urlopen(req, timeout=30) as resp:
-                    result = json.loads(resp.read())
-                    total_loaded += 1
-            except Exception as e:
-                errors.append(f"{note_key}: {e}")
-                # Fallback: try alternate endpoint
-                pass
+        if granularity == "session":
+            for session in conv["sessions"]:
+                lines = []
+                dia_ids_in_session = []
+                timestamp = session["timestamp"]
+                lines.append(f"[{speaker_a} & {speaker_b} — Session {session['num']}, {timestamp}]")
+                
+                for turn in session["turns"]:
+                    speaker = turn.get("speaker", "?")
+                    text = turn.get("text", "")
+                    dia_id = turn.get("dia_id", "")
+                    if text:
+                        lines.append(f"{speaker}: {text}")
+                    if dia_id:
+                        dia_ids_in_session.append(dia_id)
+                
+                content = "\n".join(lines)
+                category = f"locomo-conv{conv_id}"
+                note_key = f"conv{conv_id}-session_{session['num']}"
+                
+                session_dia_map[note_key] = {
+                    "dia_ids": dia_ids_in_session,
+                    "session_num": session["num"],
+                    "conv_id": conv_id
+                }
+                
+                payload = json.dumps({"content": content, "category": category})
+                req = urllib.request.Request(
+                    f"{api_url}/api/add_note?api_key={api_key}",
+                    data=payload.encode(), headers=headers, method="POST"
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        json.loads(resp.read())
+                        total_loaded += 1
+                except Exception as e:
+                    errors.append(f"{note_key}: {e}")
         
-        print(f"  ✅ Conv {conv_id} ({speaker_a} & {speaker_b}): "
-              f"{len(conv['sessions'])} sessions loaded")
+        elif granularity == "turn":
+            for session in conv["sessions"]:
+                timestamp = session["timestamp"]
+                for turn in session["turns"]:
+                    text = turn.get("text", "")
+                    dia_id = turn.get("dia_id", "")
+                    speaker = turn.get("speaker", "?")
+                    if not text or not dia_id:
+                        continue
+                    
+                    content = f"[{speaker}, {timestamp}] {text}"
+                    category = f"locomo-conv{conv_id}"
+                    note_key = dia_id
+                    
+                    session_dia_map[note_key] = {
+                        "dia_ids": [dia_id],
+                        "session_num": session["num"],
+                        "conv_id": conv_id
+                    }
+                    
+                    payload = json.dumps({"content": content, "category": category})
+                    req = urllib.request.Request(
+                        f"{api_url}/api/add_note?api_key={api_key}",
+                        data=payload.encode(), headers=headers, method="POST"
+                    )
+                    try:
+                        with urllib.request.urlopen(req, timeout=30) as resp:
+                            json.loads(resp.read())
+                            total_loaded += 1
+                    except Exception as e:
+                        errors.append(f"{note_key}: {e}")
+        
+        print(f"  ✅ Conv {conv_id} ({speaker_a} & {speaker_b}): loaded")
     
-    # Save dia_map for evaluation
     map_path = os.path.join(RESULTS_DIR, "session_dia_map.json")
     os.makedirs(RESULTS_DIR, exist_ok=True)
     with open(map_path, "w") as f:
         json.dump(session_dia_map, f, indent=2)
     
-    print(f"\n📊 Total loaded: {total_loaded} notes")
+    print(f"\n📊 Total loaded: {total_loaded} notes (granularity={granularity})")
     if errors:
         print(f"⚠️  Errors: {len(errors)}")
-        for e in errors[:5]:
+        for e in errors[:3]:
             print(f"   {e}")
     print(f"📁 DIA map saved: {map_path}")
-    
     return session_dia_map
 
 
@@ -437,6 +452,8 @@ def main():
     parser.add_argument("--all", action="store_true", help="Full pipeline")
     parser.add_argument("--api-url", default="http://localhost:5003", help="HippoGraph API URL")
     parser.add_argument("--api-key", default="benchmark_key_locomo_2026", help="API key")
+    parser.add_argument("--granularity", default="session", choices=["session", "turn"],
+                        help="Note granularity: session (~272 notes) or turn (~5882 notes)")
     
     args = parser.parse_args()
     
@@ -448,7 +465,7 @@ def main():
     
     if args.load or args.all:
         conversations, qa_pairs = parse_dataset()
-        load_into_hippograph(conversations, args.api_url, args.api_key)
+        load_into_hippograph(conversations, args.api_url, args.api_key, args.granularity)
     
     if args.eval or args.all:
         conversations, qa_pairs = parse_dataset()
