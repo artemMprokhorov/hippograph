@@ -65,6 +65,13 @@ SESSION_*.md
 # Migration scripts (one-off)
 add_emotional_fields.py
 migrate_versioning.py
+update_graph_engine.py
+update_requirements.py
+update_server.py
+ROADMAP_UPDATE.py
+MIGRATION_PLAN_hnswlib.md
+src/ann_index_faiss_backup.py
+scripts/import_export.py
 
 # Deployment plans (internal)
 DEPLOYMENT_PLAN.md
