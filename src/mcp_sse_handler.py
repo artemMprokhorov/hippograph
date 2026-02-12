@@ -384,6 +384,26 @@ def tool_stats():
     for etype, count in sorted(stats['edges_by_type'].items()):
         text += f"  - {etype}: {count}\n"
     
+    # Graph metrics
+    try:
+        from graph_metrics import get_graph_metrics
+        metrics = get_graph_metrics()
+        if metrics.is_computed:
+            ms = metrics.get_stats()
+            text += f"\nGraph metrics:\n"
+            text += f"  Communities: {ms['communities']}\n"
+            for cid, size in ms['community_sizes'].items():
+                text += f"    Community {cid}: {size} nodes\n"
+            text += f"  Isolated nodes: {ms['isolated_nodes']}\n"
+            text += f"\n  Top PageRank nodes:\n"
+            from database import get_node
+            for nid, pr in ms['top_pagerank_nodes'][:5]:
+                node = get_node(nid)
+                if node:
+                    text += f"    #{nid} (PR={pr:.3f}): {node['content'][:60]}\n"
+    except Exception as e:
+        text += f"\nGraph metrics: unavailable ({e})\n"
+    
     return {"content": [{"type": "text", "text": text}]}
 
 

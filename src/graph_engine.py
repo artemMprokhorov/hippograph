@@ -392,7 +392,11 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         if ec > 20:  # Only penalize true hub notes (25-42 entities)
             blended[node_id] *= 20.0 / ec  # Linear penalty: 0.8 at 25, 0.48 at 42
     
-    # Step 6: Sort and return top results
+    # Step 6: PageRank boost (informational only, not applied to scoring)
+    # Testing showed PAGERANK_BOOST > 0 causes P@5 regression
+    # PageRank is available via neural_stats for analysis
+    
+    # Step 7: Sort and return top results
     sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
     
     # Debug: check if new notes are in node_map

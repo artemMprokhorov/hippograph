@@ -14,3 +14,7 @@ https://github.com/explosion/spacy-models/releases/download/xx_ent_wiki_sm-3.7.0
 
 # ANN indexing for fast similarity search with incremental updates
 hnswlib>=0.8.0
+
+# Graph metrics (PageRank, community detection)
+networkx>=3.0
+scipy>=1.10.0

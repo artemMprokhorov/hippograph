@@ -38,6 +38,12 @@ def create_app():
     edge_count = rebuild_graph_cache(edges)
     print(f"🔗 Built graph cache with {edge_count} edges")
     
+    # Compute graph metrics (PageRank, communities)
+    from graph_metrics import get_graph_metrics
+    node_ids = [n["id"] for n in nodes]
+    edge_tuples = [(e["source_id"], e["target_id"], e["weight"]) for e in edges]
+    get_graph_metrics().compute(edge_tuples, node_ids)
+    
     # Register MCP endpoint
     create_mcp_endpoint(app)
     
