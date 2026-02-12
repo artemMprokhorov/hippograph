@@ -17,11 +17,12 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 ## ✨ Features
 
 **Graph-Based Memory Architecture:**
-- 🕸️ **Automatic Entity Extraction** — Identifies people, concepts, projects from your notes (regex + spaCy NER)
+- 🕸️ **Automatic Entity Extraction** — Identifies people, concepts, projects from your notes (regex + multilingual spaCy NER)
 - 🔗 **Semantic Connections** — Discovers related notes through shared entities
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
-- 🔀 **Blend Scoring** — Combines semantic similarity with graph activation (α=0.6 default) for balanced relevance
+- 🔀 **Blend Scoring** — Combines semantic similarity with graph activation (α=0.7 default) for balanced relevance
+- 🌍 **Multilingual Support** — English + Russian entity extraction with automatic language detection
 
 **Graph Visualization:**
 - 🌐 **Interactive Graph Viewer** — D3.js force-directed layout at `http://localhost:5002`
@@ -34,12 +35,12 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - SQLite graph database with nodes, edges, and entities
 - Automatic relationship detection between notes
 - MCP protocol integration for AI assistants
+- **Multilingual NER** — en_core_web_sm (English) + xx_ent_wiki_sm (Russian/multilingual) with automatic language routing
 - **Temporal decay** for recency-weighted search
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
 - **Context window protection** — brief/full detail modes, token estimation, progressive loading
 - **Note versioning** — auto-save history, restore previous versions
-- **spaCy NER** for advanced entity extraction (people, organizations, locations)
 - **Graph visualization** — D3.js interactive viewer with REST API
 - Docker-ready deployment
 
@@ -80,7 +81,7 @@ docker-compose up -d
 
 The server will:
 - Download embedding models (~2GB on first run)
-- Download spaCy model for entity extraction  
+- Download spaCy models for entity extraction (en + multilingual)
 - Initialize SQLite database
 - Start on `http://localhost:5000`
 
@@ -115,7 +116,7 @@ See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for details.
 ### Minimum (for ~500-1000 notes)
 - **RAM:** 2GB minimum (breakdown below)
   - sentence-transformers model: ~500 MB
-  - spaCy NER model: ~13 MB
+  - spaCy NER models: ~25 MB (en_core_web_sm + xx_ent_wiki_sm)
   - FAISS index: ~1-2 MB per 1000 nodes
   - Graph cache: ~1-2 MB per 20K edges
   - Python runtime + dependencies: ~300 MB
@@ -232,7 +233,7 @@ ACTIVATION_ITERATIONS=3
 ACTIVATION_DECAY=0.7
 
 # Blend scoring (semantic vs graph activation balance)
-# BLEND_ALPHA=0.6  # 0.0=pure activation, 1.0=pure semantic, default 0.6
+# BLEND_ALPHA=0.7  # 0.0=pure activation, 1.0=pure semantic, default 0.7
 
 # Temporal decay (days)
 HALF_LIFE_DAYS=30
@@ -281,7 +282,8 @@ hippograph/
 ├── scripts/
 │   ├── backup.sh              # Database backup
 │   ├── restore.sh             # Database restore
-│   └── recompute_embeddings.py
+│   ├── recompute_embeddings.py
+│   └── re_extract_entities.py # Rebuild entity graph with current NER
 ├── web/
 │   └── index.html             # D3.js graph viewer
 ├── docs/                      # Documentation
