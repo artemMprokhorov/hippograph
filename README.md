@@ -21,7 +21,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 🔗 **Semantic Connections** — Discovers related notes through shared entities
 - 📊 **Knowledge Graph** — View how your ideas connect and relate
 - 🎯 **Spreading Activation Search** — Find notes through association chains, not just keywords
-- 🔀 **Blend Scoring** — Combines semantic similarity with graph activation (α=0.7 default) for balanced relevance
+- 🔀 **Blend Scoring** — Three-signal retrieval: semantic similarity + graph activation + BM25 keyword matching (tunable α/β/γ weights)
 - 🌍 **Multilingual Support** — English + Russian entity extraction with automatic language detection
 
 **Graph Visualization:**
@@ -39,6 +39,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Temporal decay** for recency-weighted search
 - **Importance scoring** (critical/normal/low) with activation boost
 - **Duplicate detection** with similarity thresholds (blocks >95%, warns >90%)
+- **BM25 keyword search** — Okapi BM25 inverted index for exact term matching, integrated into blend scoring
 - **Context window protection** — brief/full detail modes, token estimation, progressive loading
 - **Note versioning** — auto-save history, restore previous versions
 - **Graph visualization** — D3.js interactive viewer with REST API
@@ -209,11 +210,11 @@ node_entities (relationships)
 
 Search Query
        ↓
-    Embedding → Similarity Search → Spreading Activation
-       ↓              ↓                      ↓
-    Vector DB    Related Nodes      Connection Chains
-                                           ↓
-                              Blend Scoring (α×semantic + (1-α)×spread)
+    Embedding → Similarity Search → Spreading Activation → BM25 Keyword
+       ↓              ↓                      ↓                    ↓
+    Vector DB    Related Nodes      Connection Chains     Inverted Index
+                                                                 ↓
+                              Blend Scoring (α×semantic + β×spread + γ×BM25)
                                            ↓
                                   Temporal Decay + Importance Boost
 ```
@@ -232,8 +233,10 @@ ENTITY_EXTRACTOR=spacy  # Options: regex, spacy
 ACTIVATION_ITERATIONS=3
 ACTIVATION_DECAY=0.7
 
-# Blend scoring (semantic vs graph activation balance)
-# BLEND_ALPHA=0.7  # 0.0=pure activation, 1.0=pure semantic, default 0.7
+# Blend scoring (three-signal balance)
+# BLEND_ALPHA=0.6  # Semantic similarity weight (default 0.6)
+# BLEND_GAMMA=0.15 # BM25 keyword weight (default 0.0 = disabled)
+# β = 1 - α - γ    # Spreading activation gets remainder (0.25 with defaults above)
 
 # Temporal decay (days)
 HALF_LIFE_DAYS=30
@@ -275,7 +278,8 @@ hippograph/
 ├── src/
 │   ├── server.py              # Flask app entry
 │   ├── database.py            # Graph database layer
-│   ├── graph_engine.py        # Spreading activation
+│   ├── graph_engine.py        # Spreading activation + blend scoring
+│   ├── bm25_index.py          # Okapi BM25 keyword search index
 │   ├── entity_extractor.py    # spaCy NER + regex extraction
 │   ├── stable_embeddings.py   # Embedding model
 │   └── mcp_sse_handler.py     # MCP protocol

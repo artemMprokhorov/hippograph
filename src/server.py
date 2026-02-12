@@ -44,6 +44,11 @@ def create_app():
     edge_tuples = [(e["source_id"], e["target_id"], e["weight"]) for e in edges]
     get_graph_metrics().compute(edge_tuples, node_ids)
     
+    # Build BM25 keyword index
+    from bm25_index import get_bm25_index
+    bm25_docs = [(n["id"], n.get("content", "")) for n in nodes]
+    get_bm25_index().build(bm25_docs)
+    
     # Register MCP endpoint
     create_mcp_endpoint(app)
     

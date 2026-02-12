@@ -27,7 +27,8 @@ ACTIVATION_DECAY = float(os.getenv("ACTIVATION_DECAY", "0.7"))
 SIMILARITY_THRESHOLD = float(os.getenv("SIMILARITY_THRESHOLD", "0.5"))
 HALF_LIFE_DAYS = float(os.getenv("HALF_LIFE_DAYS", "30"))
 MAX_SEMANTIC_LINKS = int(os.getenv("MAX_SEMANTIC_LINKS", "5"))
-BLEND_ALPHA = float(os.getenv("BLEND_ALPHA", "0.6"))  # 0.6 = 60% semantic, 40% spreading
+BLEND_ALPHA = float(os.getenv("BLEND_ALPHA", "0.6"))  # semantic weight
+BLEND_GAMMA = float(os.getenv("BLEND_GAMMA", "0.0"))  # BM25 weight (0=disabled, try 0.15)
 
 
 def cosine_similarity(a, b):
@@ -182,6 +183,12 @@ def add_note_with_links(content, category="general", importance="normal", force=
     # Add to ANN index incrementally (enables immediate search for this note)
     if ann_index.enabled:
         ann_index.add_vector(node_id, embedding)
+    
+    # Update BM25 index
+    from bm25_index import get_bm25_index
+    bm25 = get_bm25_index()
+    if bm25.is_built:
+        bm25.add_document(node_id, content)
     
     # Extract entities and create entity-based links
     entities = extract_entities(content)
@@ -372,16 +379,35 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     else:
         sem_normalized = {}
     
-    # Blend: for nodes with both signals, combine them
-    # For nodes with only spreading (discovered via graph), use spreading only
+    # Blend: combine semantic, spreading, and BM25 signals
+    # final = α × semantic + β × spreading + γ × BM25
+    # where β = 1 - α - γ (spreading gets remainder)
     blended = {}
     alpha = BLEND_ALPHA
-    for node_id in activations:
+    gamma = BLEND_GAMMA
+    beta = max(0.0, 1.0 - alpha - gamma)
+    
+    # Get BM25 scores if gamma > 0
+    bm25_scores = {}
+    if gamma > 0:
+        from bm25_index import get_bm25_index
+        bm25_raw = get_bm25_index().search(query, top_k=100)
+        if bm25_raw:
+            max_bm25 = max(bm25_raw.values())
+            if max_bm25 > 0:
+                bm25_scores = {nid: s / max_bm25 for nid, s in bm25_raw.items()}
+        print(f"🔍 BM25: {len(bm25_scores)} docs matched")
+    
+    # Collect all node IDs that appear in any signal
+    all_node_ids = set(activations.keys()) | set(bm25_scores.keys())
+    
+    for node_id in all_node_ids:
         sem = sem_normalized.get(node_id, 0.0)
         spread = spread_normalized.get(node_id, 0.0)
-        blended[node_id] = alpha * sem + (1 - alpha) * spread
+        bm25 = bm25_scores.get(node_id, 0.0)
+        blended[node_id] = alpha * sem + beta * spread + gamma * bm25
     
-    print(f"🔀 Blend scoring (α={alpha}): {len(blended)} nodes scored")
+    print(f"🔀 Blend scoring (α={alpha}, β={beta}, γ={gamma}): {len(blended)} nodes scored")
     
     # Step 5: Apply entity-count penalty to suppress hub notes
     # Notes with many entities are generic (session summaries, milestones)

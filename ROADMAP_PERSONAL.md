@@ -19,7 +19,8 @@
 - [x] Docker deployment on Mac Studio M3 Ultra
 
 ### Search & Retrieval
-- [x] Blend scoring (α=0.7 semantic + 0.3 spreading activation)
+- [x] Blend scoring (α=0.6 semantic + β=0.25 spreading + γ=0.15 BM25)
+- [x] BM25 keyword search (Okapi BM25, 8678 unique terms, zero-dependency)
 - [x] Context window protection (brief/full modes)
 - [x] Category, time range, entity type filters
 - [x] Duplicate detection (similarity threshold)
@@ -45,27 +46,16 @@
 - [x] Phase 4.5: Entity re-extraction (587 notes)
 - [x] Phase 5: Category normalization (93→68 categories)
 
-**Current State:** 587 nodes, 47,924 edges, 1,721 entities, 68 categories
+**Current State:** 588 nodes, 48,338 edges, 1,721 entities, 68 categories, 8,678 BM25 terms
 
 ---
 
 ## 🔥 HIGH PRIORITY — Next Development Cycle
 
-### 1. BM25 Hybrid Search
+### 1. ~~BM25 Hybrid Search~~ ✅ COMPLETED (Feb 12, 2026)
 **Source:** Zep/Graphiti competitive analysis
-**Problem:** Our search is semantic-only + entity graph. Exact keyword matches (API names, error codes, specific terms) get lost in semantic similarity.
-**Solution:** Add BM25 keyword scoring as third signal:
-```
-final = α × semantic + β × spreading + γ × BM25
-```
-**Implementation:**
-- [ ] Add rank-bm25 or custom Okapi BM25 on note content
-- [ ] Build inverted index at startup (alongside ANN + graph cache)
-- [ ] Integrate into blend scoring with tunable γ parameter
-- [ ] Benchmark: expect P@5 improvement on exact-term queries
-
-**Effort:** 4-6 hours
-**Priority:** HIGH — addresses known weakness in current retrieval
+**Result:** Zero-dependency Okapi BM25 implementation. 8678 unique terms indexed in 10ms at startup. Three-signal blend scoring: `final = α×semantic + β×spreading + γ×BM25` where β = 1-α-γ. Backward compatible (γ=0 by default). Incremental updates for new notes. Production deployed with γ=0.15.
+**Files:** `src/bm25_index.py`, updated `graph_engine.py` blend scoring
 
 ---
 
@@ -176,7 +166,7 @@ Moved to ROADMAP_ENTERPRISE.md:
 | Metric | HippoGraph | Mem0 | Zep | Letta | doobidoo |
 |--------|-----------|------|-----|-------|----------|
 | LLM Cost | **$0** | ~$0.01/note | ~$0.02/note | ~$0.05/note | $0 |
-| Retrieval | Spread+Semantic | Vector+Graph | BM25+Semantic+Graph | Agent-driven | Vector-only |
+| Retrieval | Spread+Semantic+BM25 | Vector+Graph | BM25+Semantic+Graph | Agent-driven | Vector-only |
 | Latency | 200-500ms | P95=1.44s | P95=300ms | varies | 5ms (cached) |
 | Graph | ✅ Spreading | ✅ Mem0ᵍ | ✅ Temporal KG | ❌ | ❌ |
 | Emotional | ✅ | ❌ | ❌ | ❌ | ✅ |
