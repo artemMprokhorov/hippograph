@@ -59,6 +59,50 @@ def create_app():
     # Register MCP endpoint
     create_mcp_endpoint(app)
     
+    # ===== REST API for Benchmark =====
+    
+    @app.route("/api/add_note", methods=["POST"])
+    def api_add_note():
+        """REST endpoint for adding notes (used by benchmark adapter)."""
+        api_key = request.args.get('api_key', '')
+        expected_key = os.getenv('NEURAL_API_KEY', '')
+        if not expected_key or api_key != expected_key:
+            return jsonify({"error": "unauthorized"}), 401
+        
+        data = request.get_json()
+        content = data.get("content", "")
+        category = data.get("category", "general")
+        
+        if not content:
+            return jsonify({"error": "content required"}), 400
+        
+        from graph_engine import add_note_with_connections
+        result = add_note_with_connections(content, category)
+        return jsonify(result)
+    
+    @app.route("/api/search", methods=["POST"])
+    def api_search():
+        """REST endpoint for searching (used by benchmark adapter)."""
+        api_key = request.args.get('api_key', '')
+        expected_key = os.getenv('NEURAL_API_KEY', '')
+        if not expected_key or api_key != expected_key:
+            return jsonify({"error": "unauthorized"}), 401
+        
+        data = request.get_json()
+        query = data.get("query", "")
+        limit = data.get("limit", 5)
+        detail_mode = data.get("detail_mode", "full")
+        category = data.get("category", None)
+        
+        if not query:
+            return jsonify({"error": "query required"}), 400
+        
+        from graph_engine import search_with_activation
+        results = search_with_activation(
+            query, limit=limit, detail_mode=detail_mode,
+            category_filter=category
+        )
+        return jsonify({"results": results})
 
     # ===== REST API for Graph Viewer =====
     

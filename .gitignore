@@ -80,3 +80,4 @@ DEPLOYMENT_PLAN.md
 .env.backup_*
 benchmark/locomo10.json
 benchmark/results/
+data/benchmark/

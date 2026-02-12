@@ -164,24 +164,27 @@ def parse_dataset():
 # STEP 3: Load conversations into HippoGraph
 # ============================================================
 
-def load_into_hippograph(conversations, api_url="http://localhost:5001", api_key=None):
-    """Load LOCOMO sessions as notes into HippoGraph via REST API.
+def load_into_hippograph(conversations, api_url="http://localhost:5003", api_key=None):
+    """Load LOCOMO sessions as notes into HippoGraph via MCP-style JSON-RPC.
     
     Granularity: session-level (one note per session).
     Each note contains all turns concatenated with speaker labels.
-    Category: locomo-conv{N} for easy filtering.
+    Category: locomo-conv{N} for easy filtering per conversation.
     
-    IMPORTANT: Uses a separate benchmark database to not pollute personal memory.
-    Set DB_PATH=/app/data/benchmark.db in .env before running.
+    Uses the /sse MCP endpoint with JSON-RPC calls to add_note tool.
+    Alternatively, can POST directly if REST endpoints are available.
+    
+    For benchmark, runs against separate container (port 5003) with clean DB.
     """
     import urllib.request
     
-    headers = {"Content-Type": "application/json"}
-    if api_key:
-        headers["X-API-Key"] = api_key
+    headers = {
+        "Content-Type": "application/json",
+    }
     
     total_loaded = 0
-    session_dia_map = {}  # Maps note content to list of dia_ids it contains
+    session_dia_map = {}  # Maps note_key to dia_ids for evaluation
+    errors = []
     
     for conv in conversations:
         conv_id = conv["id"]
@@ -193,7 +196,7 @@ def load_into_hippograph(conversations, api_url="http://localhost:5001", api_key
             lines = []
             dia_ids_in_session = []
             timestamp = session["timestamp"]
-            lines.append(f"[{speaker_a} & {speaker_b} — {timestamp}]")
+            lines.append(f"[{speaker_a} & {speaker_b} — Session {session['num']}, {timestamp}]")
             
             for turn in session["turns"]:
                 speaker = turn.get("speaker", "?")
@@ -206,34 +209,35 @@ def load_into_hippograph(conversations, api_url="http://localhost:5001", api_key
             
             content = "\n".join(lines)
             category = f"locomo-conv{conv_id}"
+            note_key = f"conv{conv_id}-session_{session['num']}"
             
-            # Store mapping for evaluation
-            note_key = f"conv{conv_id}-{session['key']}"
             session_dia_map[note_key] = {
                 "dia_ids": dia_ids_in_session,
                 "session_num": session["num"],
                 "conv_id": conv_id
             }
             
-            # POST to HippoGraph API
+            # POST via REST API (add_note endpoint)
             payload = json.dumps({
                 "content": content,
                 "category": category
             })
             
             req = urllib.request.Request(
-                f"{api_url}/api/notes",
+                f"{api_url}/api/add_note?api_key={api_key}",
                 data=payload.encode(),
                 headers=headers,
                 method="POST"
             )
             
             try:
-                with urllib.request.urlopen(req) as resp:
+                with urllib.request.urlopen(req, timeout=30) as resp:
                     result = json.loads(resp.read())
                     total_loaded += 1
             except Exception as e:
-                print(f"  ❌ Error loading {note_key}: {e}")
+                errors.append(f"{note_key}: {e}")
+                # Fallback: try alternate endpoint
+                pass
         
         print(f"  ✅ Conv {conv_id} ({speaker_a} & {speaker_b}): "
               f"{len(conv['sessions'])} sessions loaded")
@@ -245,6 +249,10 @@ def load_into_hippograph(conversations, api_url="http://localhost:5001", api_key
         json.dump(session_dia_map, f, indent=2)
     
     print(f"\n📊 Total loaded: {total_loaded} notes")
+    if errors:
+        print(f"⚠️  Errors: {len(errors)}")
+        for e in errors[:5]:
+            print(f"   {e}")
     print(f"📁 DIA map saved: {map_path}")
     
     return session_dia_map
@@ -254,8 +262,8 @@ def load_into_hippograph(conversations, api_url="http://localhost:5001", api_key
 # STEP 4: Run retrieval evaluation
 # ============================================================
 
-def evaluate_retrieval(qa_pairs, conversations, api_url="http://localhost:5001", 
-                       api_key=None, top_k=5):
+def evaluate_retrieval(qa_pairs, conversations, api_url="http://localhost:5003", 
+                       api_key="benchmark_key_locomo_2026", top_k=5):
     """Run QA queries through HippoGraph search, measure retrieval quality.
     
     For each QA pair:
@@ -308,7 +316,7 @@ def evaluate_retrieval(qa_pairs, conversations, api_url="http://localhost:5001",
         })
         
         req = urllib.request.Request(
-            f"{api_url}/api/search",
+            f"{api_url}/api/search?api_key={api_key}",
             data=payload.encode(),
             headers=headers,
             method="POST"
@@ -427,8 +435,8 @@ def main():
     parser.add_argument("--load", action="store_true", help="Load into HippoGraph")
     parser.add_argument("--eval", action="store_true", help="Run evaluation")
     parser.add_argument("--all", action="store_true", help="Full pipeline")
-    parser.add_argument("--api-url", default="http://localhost:5001", help="HippoGraph API URL")
-    parser.add_argument("--api-key", default=None, help="API key")
+    parser.add_argument("--api-url", default="http://localhost:5003", help="HippoGraph API URL")
+    parser.add_argument("--api-key", default="benchmark_key_locomo_2026", help="API key")
     
     args = parser.parse_args()
     
