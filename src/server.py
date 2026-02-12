@@ -76,8 +76,8 @@ def create_app():
         if not content:
             return jsonify({"error": "content required"}), 400
         
-        from graph_engine import add_note_with_connections
-        result = add_note_with_connections(content, category)
+        from graph_engine import add_note_with_links
+        result = add_note_with_links(content, category)
         return jsonify(result)
     
     @app.route("/api/search", methods=["POST"])
@@ -97,12 +97,12 @@ def create_app():
         if not query:
             return jsonify({"error": "query required"}), 400
         
-        from graph_engine import search_with_activation
-        results = search_with_activation(
+        from graph_engine import search_with_activation_protected
+        results = search_with_activation_protected(
             query, limit=limit, detail_mode=detail_mode,
             category_filter=category
         )
-        return jsonify({"results": results})
+        return jsonify(results)
 
     # ===== REST API for Graph Viewer =====
     
