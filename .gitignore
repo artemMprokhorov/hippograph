@@ -78,3 +78,5 @@ DEPLOYMENT_PLAN.md
 
 # Leaked key backups
 .env.backup_*
+benchmark/locomo10.json
+benchmark/results/
