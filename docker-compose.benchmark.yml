@@ -29,6 +29,9 @@ services:
       - EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
       - BLEND_ALPHA=${BLEND_ALPHA:-0.6}
       - BLEND_GAMMA=${BLEND_GAMMA:-0.15}
+      - RERANK_ENABLED=true
+      - RERANK_TOP_N=20
+      - RERANK_WEIGHT=0.3
       - USE_ANN_INDEX=true
       - ANN_INDEX_TYPE=HNSW
       - HNSW_M=32
