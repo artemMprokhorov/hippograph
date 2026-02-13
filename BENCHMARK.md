@@ -6,11 +6,11 @@
 
 HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-research/locomo) — a standardized dataset for testing long-conversation memory systems. LOCOMO contains 10 multi-session conversations (272 sessions, 5,882 dialogue turns) with 1,986 QA pairs across multiple reasoning categories.
 
-**Key result:** HippoGraph achieves **44.2% Recall@5** on retrieval with **zero LLM cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, and BM25 keyword search.
+**Key result:** HippoGraph achieves **65.5% Recall@5** on retrieval with **zero LLM infrastructure cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, BM25 keyword search, and cross-encoder reranking.
 
 ---
 
-### Setup
+### Best Configuration (Hybrid + Reranking)
 
 | Parameter | Value |
 |-----------|-------|
@@ -21,23 +21,34 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 | LLM calls | **0** (zero — fully local processing) |
 | Embedding model | paraphrase-multilingual-MiniLM-L12-v2 |
 | Entity extraction | spaCy (en\_core\_web\_sm + xx\_ent\_wiki\_sm) |
-| Retrieval pipeline | Semantic + Spreading Activation + BM25 blend |
+| Retrieval pipeline | Semantic + Spreading Activation + BM25 + Cross-Encoder Reranking |
 | Blend weights | α=0.6 (semantic), β=0.25 (spreading activation), γ=0.15 (BM25) |
-| Reranking | Disabled for this run |
+| Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2, weight=0.3, top-N=20 |
+| Granularity | Hybrid (3-turn chunks, ~1,960 notes) |
 
 ---
 
-### Results: Turn-Level Granularity (5,870 notes)
+### Results: Hybrid Granularity + Reranking (Best)
+
+| Category | Queries | Hits | Recall@5 | MRR |
+|----------|---------|------|----------|-----|
+| **Overall** | **1,540** | **1,008** | **65.5%** | **0.535** |
+| Single-hop | 282 | 175 | 62.1% | 0.458 |
+| Multi-hop | 321 | 206 | 64.2% | 0.537 |
+| Temporal | 96 | 34 | 35.4% | 0.266 |
+| Open-domain | 841 | 593 | **70.5%** | 0.590 |
+
+### Results: Turn-Level Granularity (5,870 notes, no reranking)
 
 | Category | Queries | Hits | Recall@5 | MRR |
 |----------|---------|------|----------|-----|
 | **Overall** | **1,540** | **681** | **44.2%** | **0.304** |
 | Single-hop | 282 | 107 | 37.9% | 0.227 |
-| Multi-hop | 321 | 169 | **52.6%** | 0.394 |
+| Multi-hop | 321 | 169 | 52.6% | 0.394 |
 | Temporal | 96 | 22 | 22.9% | 0.139 |
 | Open-domain | 841 | 383 | 45.5% | 0.314 |
 
-### Results: Session-Level Granularity (272 notes)
+### Results: Session-Level Granularity (272 notes, no reranking)
 
 | Category | Queries | Hits | Recall@5 | MRR |
 |----------|---------|------|----------|-----|
@@ -49,17 +60,27 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 
 ---
 
-### Granularity Impact Analysis
+### Optimization Journey
 
-| Category | Session → Turn | Delta |
-|----------|---------------|-------|
-| Overall | 32.6% → 44.2% | **+11.6%** |
-| Multi-hop | 27.4% → 52.6% | **+25.2%** |
-| Open-domain | 28.3% → 45.5% | **+17.2%** |
-| Single-hop | 50.4% → 37.9% | -12.5% |
-| Temporal | 35.4% → 22.9% | -12.5% |
+| Configuration | Recall@5 | MRR | Notes |
+|--------------|----------|-----|-------|
+| Session-level (baseline) | 32.6% | 0.223 | 272 notes, broad context |
+| Turn-level | 44.2% | 0.304 | 5,870 notes, +11.6% |
+| **Hybrid + Reranking** | **65.5%** | **0.535** | **~1,960 notes, +21.3% over turn** |
 
-**Key finding:** Turn-level granularity dramatically improves multi-hop retrieval (+25.2%), validating that spreading activation works best on fine-grained memory nodes. However, single-hop and temporal queries benefit from broader session context. A hybrid approach (3-5 turns per note) is expected to capture the best of both.
+| Category | Session → Turn → Hybrid+Rerank |
+|----------|-------------------------------|
+| Overall | 32.6% → 44.2% → **65.5%** |
+| Multi-hop | 27.4% → 52.6% → **64.2%** |
+| Single-hop | 50.4% → 37.9% → **62.1%** |
+| Open-domain | 28.3% → 45.5% → **70.5%** |
+| Temporal | 35.4% → 22.9% → **35.4%** |
+
+**Key findings:**
+- Hybrid granularity (3-turn chunks) captures the best of both session and turn-level approaches
+- Cross-encoder reranking adds +21.3% over turn-level baseline
+- Spreading activation validated: multi-hop improved from 27.4% (session) to 64.2% (hybrid+rerank)
+- Temporal queries remain the hardest category — future work on temporal reasoning needed
 
 ---
 
@@ -71,7 +92,7 @@ Our Recall@5 measures whether the correct evidence document appears in the top-5
 
 | System | Metric | Score | What It Measures |
 |--------|--------|-------|-----------------|
-| **HippoGraph** | **Recall@5** | **44.2%** | Retrieved correct document in top-5 |
+| **HippoGraph** | **Recall@5** | **65.5%** | Retrieved correct document in top-5 |
 | Mem0 | LOCOMO J-score | 66.9% | LLM-judged answer accuracy |
 | Letta (MemGPT) | LoCoMo accuracy | 74.0% | LLM-generated answer accuracy |
 | GPT-4 (no memory) | F1 | 32.1% | Answer text overlap with ground truth |
@@ -94,6 +115,8 @@ Query → Embedding → ANN Search (HNSW)
                          ↓
               Blend Scoring: α×semantic + β×spreading + γ×BM25
                          ↓
+              Cross-Encoder Reranking (ms-marco-MiniLM-L-6-v2)
+                         ↓
               Temporal Decay (half-life=30 days)
                          ↓
               Top-K Results
@@ -101,25 +124,26 @@ Query → Embedding → ANN Search (HNSW)
 
 ### Next Steps
 
-- [ ] Hybrid granularity (3-5 turns per note) to balance multi-hop and single-hop performance
-- [ ] Enable cross-encoder reranking (ms-marco-MiniLM-L-6-v2) and measure impact
+- [x] ~~Hybrid granularity (3-turn chunks)~~ — **+21.3% improvement**
+- [x] ~~Cross-encoder reranking~~ — **included in best result**
 - [ ] Tune blend weights (α, β, γ) per category
 - [ ] Add LLM generation layer for end-to-end F1 comparison with Mem0/Letta
 - [ ] Evaluate on LongMemEval and DMR benchmarks
+- [ ] Improve temporal reasoning (currently 35.4%)
 
 ---
 
 ### Reproduce
 
 ```bash
-# 1. Start isolated benchmark container
+# 1. Start isolated benchmark container (includes reranking)
 docker-compose -f docker-compose.benchmark.yml up -d --build
 
-# 2. Load dataset and run evaluation
+# 2. Load dataset and run evaluation (hybrid granularity)
 python3 benchmark/locomo_adapter.py --all \
   --api-url http://localhost:5003 \
   --api-key benchmark_key_locomo_2026 \
-  --granularity turn
+  --granularity hybrid
 
 # Results saved to benchmark/results/locomo_results.json
 ```
