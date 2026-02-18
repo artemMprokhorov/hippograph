@@ -6,6 +6,7 @@ SQLite with graph schema: nodes, edges, entities
 
 import sqlite3
 import os
+import json
 from datetime import datetime
 from contextlib import contextmanager
 
@@ -49,7 +50,10 @@ def init_database():
                 importance TEXT DEFAULT 'normal',
                 emotional_tone TEXT,
                 emotional_intensity INTEGER DEFAULT 5,
-                emotional_reflection TEXT
+                emotional_reflection TEXT,
+                t_event_start TEXT,
+                t_event_end TEXT,
+                temporal_expressions TEXT
             )
         """)
         
@@ -59,6 +63,13 @@ def init_database():
         if 'importance' not in columns:
             cursor.execute("ALTER TABLE nodes ADD COLUMN importance TEXT DEFAULT 'normal'")
             print("  ↳ Added 'importance' column to nodes table")
+        
+        # Migration: add bi-temporal columns if missing
+        if 't_event_start' not in columns:
+            cursor.execute("ALTER TABLE nodes ADD COLUMN t_event_start TEXT")
+            cursor.execute("ALTER TABLE nodes ADD COLUMN t_event_end TEXT")
+            cursor.execute("ALTER TABLE nodes ADD COLUMN temporal_expressions TEXT")
+            print("  ↳ Added bi-temporal columns to nodes table")
         
         # Edges table (connections between nodes)
         cursor.execute("""
@@ -105,10 +116,12 @@ def init_database():
 
 
 def create_node(content, category="general", embedding=None, importance="normal", 
-                emotional_tone=None, emotional_intensity=5, emotional_reflection=None):
+                emotional_tone=None, emotional_intensity=5, emotional_reflection=None,
+                t_event_start=None, t_event_end=None, temporal_expressions=None):
     """Create a new node (note). 
     Importance: 'critical', 'normal', or 'low'
     Emotional fields: tone (keywords), intensity (0-10), reflection (narrative) - only if ENABLE_EMOTIONAL_MEMORY=true
+    Bi-temporal: t_event_start/end (nullable) = when event happened, temporal_expressions = JSON array of extracted expressions
     """
     timestamp = datetime.now().isoformat()
     
@@ -118,14 +131,29 @@ def create_node(content, category="general", embedding=None, importance="normal"
         emotional_intensity = 5
         emotional_reflection = None
     
+    # Auto-extract temporal expressions if not provided
+    if t_event_start is None and temporal_expressions is None:
+        try:
+            from temporal_extractor import extract_temporal_expressions
+            ref_date = datetime.fromisoformat(timestamp)
+            temporal = extract_temporal_expressions(content, ref_date)
+            if temporal["expressions"]:
+                temporal_expressions = json.dumps(temporal["expressions"])
+                t_event_start = temporal["t_event_start"]
+                t_event_end = temporal["t_event_end"]
+        except Exception:
+            pass  # Graceful degradation — temporal is optional
+    
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             """INSERT INTO nodes (content, category, timestamp, embedding, last_accessed, access_count, 
-               importance, emotional_tone, emotional_intensity, emotional_reflection) 
-               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)""",
+               importance, emotional_tone, emotional_intensity, emotional_reflection,
+               t_event_start, t_event_end, temporal_expressions) 
+               VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)""",
             (content, category, timestamp, embedding, timestamp, importance, 
-             emotional_tone, emotional_intensity, emotional_reflection)
+             emotional_tone, emotional_intensity, emotional_reflection,
+             t_event_start, t_event_end, temporal_expressions)
         )
         return cursor.lastrowid
 

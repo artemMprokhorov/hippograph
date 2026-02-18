@@ -29,6 +29,7 @@ HALF_LIFE_DAYS = float(os.getenv("HALF_LIFE_DAYS", "30"))
 MAX_SEMANTIC_LINKS = int(os.getenv("MAX_SEMANTIC_LINKS", "5"))
 BLEND_ALPHA = float(os.getenv("BLEND_ALPHA", "0.6"))  # semantic weight
 BLEND_GAMMA = float(os.getenv("BLEND_GAMMA", "0.0"))  # BM25 weight (0=disabled, try 0.15)
+BLEND_DELTA = float(os.getenv("BLEND_DELTA", "0.0"))  # temporal weight (0=disabled, try 0.1)
 
 
 def cosine_similarity(a, b):
@@ -379,13 +380,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     else:
         sem_normalized = {}
     
-    # Blend: combine semantic, spreading, and BM25 signals
-    # final = α × semantic + β × spreading + γ × BM25
-    # where β = 1 - α - γ (spreading gets remainder)
+    # Blend: combine semantic, spreading, BM25, and temporal signals
+    # final = α × semantic + β × spreading + γ × BM25 + δ × temporal
+    # where β = 1 - α - γ - δ (spreading gets remainder)
     blended = {}
     alpha = BLEND_ALPHA
     gamma = BLEND_GAMMA
-    beta = max(0.0, 1.0 - alpha - gamma)
+    delta = BLEND_DELTA
+    beta = max(0.0, 1.0 - alpha - gamma - delta)
     
     # Get BM25 scores if gamma > 0
     bm25_scores = {}
@@ -398,16 +400,38 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                 bm25_scores = {nid: s / max_bm25 for nid, s in bm25_raw.items()}
         print(f"🔍 BM25: {len(bm25_scores)} docs matched")
     
+    # Get temporal scores if delta > 0
+    temporal_scores = {}
+    if delta > 0:
+        try:
+            from temporal_extractor import extract_temporal_expressions, compute_temporal_overlap
+            query_temporal = extract_temporal_expressions(query)
+            if query_temporal["t_event_start"] and query_temporal["t_event_end"]:
+                # Score all nodes that have temporal data
+                with get_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id, t_event_start, t_event_end FROM nodes WHERE t_event_start IS NOT NULL")
+                    for row in cursor.fetchall():
+                        nid, ns, ne = row
+                        overlap = compute_temporal_overlap(
+                            query_temporal["t_event_start"], query_temporal["t_event_end"], ns, ne)
+                        if overlap > 0:
+                            temporal_scores[nid] = overlap
+                print(f"🕐 Temporal: {len(temporal_scores)} notes matched query time range")
+        except Exception as e:
+            print(f"⚠️ Temporal scoring failed: {e}")
+    
     # Collect all node IDs that appear in any signal
-    all_node_ids = set(activations.keys()) | set(bm25_scores.keys())
+    all_node_ids = set(activations.keys()) | set(bm25_scores.keys()) | set(temporal_scores.keys())
     
     for node_id in all_node_ids:
         sem = sem_normalized.get(node_id, 0.0)
         spread = spread_normalized.get(node_id, 0.0)
         bm25 = bm25_scores.get(node_id, 0.0)
-        blended[node_id] = alpha * sem + beta * spread + gamma * bm25
+        temp = temporal_scores.get(node_id, 0.0)
+        blended[node_id] = alpha * sem + beta * spread + gamma * bm25 + delta * temp
     
-    print(f"🔀 Blend scoring (α={alpha}, β={beta}, γ={gamma}): {len(blended)} nodes scored")
+    print(f"🔀 Blend scoring (α={alpha}, β={beta}, γ={gamma}, δ={delta}): {len(blended)} nodes scored")
     
     # Step 5: Apply entity-count penalty to suppress hub notes
     # Notes with many entities are generic (session summaries, milestones)
