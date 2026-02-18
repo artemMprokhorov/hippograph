@@ -104,15 +104,9 @@ Query temporal decomposition strips signal words for cleaner semantic search.
 
 ---
 
-### 5. CLI/TUI Interface
-**Problem:** Web viewer + MCP only, no quick terminal access
-**Tasks:**
-- [ ] Simple Python CLI: `hippograph add/search/stats`
-- [ ] Uses REST API (no new backend code)
-- [ ] Optional: Rich TUI for interactive browsing
-
-**Effort:** 2-3 hours
-**Priority:** MEDIUM
+### 5. ~~CLI/TUI Interface~~ ✅ COMPLETED (Feb 18, 2026)
+**Result:** `hippograph` CLI — search/add/stats/health commands. Color-coded scores,
+brief/full modes, category filter. Config via ~/.hippograph.env. Aliases: `s`, `a`, `h`.
 
 ---
 
