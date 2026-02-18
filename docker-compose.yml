@@ -8,6 +8,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./src:/app/src
+      - ./web:/var/www/html
     environment:
       - DB_PATH=/app/data/memory.db
       - FLASK_PORT=5000
