@@ -1,7 +1,8 @@
 # HippoGraph - Personal Roadmap
 
 **Target:** Single user, 500-2,000 notes, personal knowledge management + research
-**Philosophy:** Keep all memories. Natural patterns over forced deletion. Zero LLM cost.
+**Philosophy:** Keep all memories. Natural patterns over forced deletion. **Zero LLM cost as default.**
+Runs on any hardware (laptop, mini-PC, 8GB RAM). LLM layer optional for users with GPU.
 **Last Updated:** February 18, 2026
 
 ---
@@ -73,21 +74,51 @@ Query temporal decomposition strips signal words for cleaner semantic search.
 
 ---
 
-### 5. LLM Generation Layer (Ollama)
-**Source:** End-to-end F1 comparison with Mem0/Letta requires answer generation
+### 5. LLM Generation Layer (Ollama) — OPTIONAL
+**Source:** End-to-end F1 comparison with Mem0/Letta requires answer generation.
 **Problem:** Our 66.8% is retrieval-only Recall@5. Competitors report LLM-judged answer accuracy.
-**Solution:** Add Ollama sidecar for answer generation on retrieved context:
-- [ ] Ollama container in docker-compose
-- [ ] Retrieval → context assembly → LLM generation → F1 scoring
-- [ ] Compare end-to-end with Mem0 (J=66.9%), Letta (74.0%)
-- [ ] Temporal reasoning via LLM (current bottleneck: 36.5%)
+Temporal retrieval at 36.5% is a **fundamental ceiling** for retrieval-only systems
+(TReMu paper: GPT-4o standard prompting = 29.83%, we're already above baseline).
 
+**Architecture:** Ollama = optional enhancement, NOT a dependency.
+```
+OLLAMA_ENABLED=false          # default: OFF — zero LLM cost
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5-7b
+```
+System MUST work fully without Ollama. LLM layer adds:
+- End-to-end answer generation (retrieval → context → LLM → answer)
+- Temporal reasoning via neuro-symbolic code generation (TReMu approach)
+- Potential +30-40% on temporal queries (36.5% → 70%+)
+
+**Tasks:**
+- [ ] Ollama container in docker-compose (optional profile)
+- [ ] Retrieval → context assembly → LLM generation → F1 scoring
+- [ ] Neuro-symbolic temporal: LLM generates Python code for date calculations
+- [ ] Compare end-to-end with Mem0 (J=66.9%), Letta (74.0%)
+- [ ] Graceful degradation: Ollama unavailable → return raw retrieval results
+
+**Research basis:** TReMu (ACL 2025), Hindsight/TEMPR (Dec 2025)
 **Effort:** 1-2 weeks
-**Priority:** HIGH — needed for publication and fair comparison
+**Priority:** HIGH — but only for users with adequate hardware (GPU or M-series Mac)
 
 ---
 
 ## 🎯 MEDIUM PRIORITY — Quality of Life
+
+### 8. Reciprocal Rank Fusion (RRF)
+**Source:** Hindsight/TEMPR (Dec 2025) — used in 89.61% LoCoMo system
+**Problem:** Current weighted blend requires manual α,β,γ,δ tuning and mixes different score scales.
+**Solution:** RRF fuses by rank position, not score magnitude. Zero LLM cost.
+```
+RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r, k=60
+```
+- [ ] Implement RRF as alternative fusion method
+- [ ] A/B test against current blend on regression suite (32/32 baseline)
+- [ ] Config: FUSION_METHOD=blend|rrf
+
+**Effort:** 3-4 hours
+**Priority:** MEDIUM — pure algorithmic improvement, benefits all hardware
 
 ### 4. Sleep-Time Compute (Phase 3 Foundation)
 **Source:** Letta's innovation — memory refinement during idle

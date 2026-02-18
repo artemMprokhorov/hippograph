@@ -1,7 +1,9 @@
 # HippoGraph - Enterprise Roadmap
 
 **Target:** Multi-user deployment, 10K-100K+ notes, production workloads
-**Philosophy:** Performance at scale. Proven techniques from competitors. LLM-optional.
+**Philosophy:** Performance at scale. Proven techniques from competitors. **LLM-optional architecture.**
+Core system = zero LLM cost (runs on 8GB RAM VPS). LLM layer = enterprise add-on for
+organizations with GPU servers. Scales DOWN to minimal hardware better than any competitor.
 **Last Updated:** February 18, 2026
 
 > ⚠️ This roadmap is aspirational. Current focus is personal/research use.
@@ -87,6 +89,51 @@
 
 ---
 
+## Tier 2.5: LLM Enhancement Layer (Optional)
+
+> Enterprise customers with GPU infrastructure can enable LLM features.
+> Core system ALWAYS works without LLM — this tier is purely additive.
+
+### Reciprocal Rank Fusion (RRF)
+**Source:** Hindsight/TEMPR (Dec 2025) — 89.61% on LoCoMo
+**Problem:** Current weighted blend (α×sem + β×spread + γ×BM25 + δ×temporal) requires manual
+tuning and suffers from score scale mismatch between signals.
+**Solution:** RRF merges ranked lists by rank position, not score magnitude:
+```
+RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
+```
+- [ ] Implement RRF fusion as alternative to weighted blend
+- [ ] A/B test: RRF vs current blend on regression suite
+- [ ] Make configurable: FUSION_METHOD=blend|rrf
+
+**Effort:** 3-4 hours (no LLM needed — pure algorithmic improvement)
+**Priority:** HIGH — benefits all users, zero cost
+
+### LLM-Powered Temporal Reasoning
+**Source:** TReMu (ACL 2025) — 29.83% → 77.67% on temporal queries
+**Problem:** Temporal retrieval at 36.5% is fundamental ceiling for retrieval-only systems.
+**Solution:** Neuro-symbolic approach: LLM generates Python code for date calculations
+- [ ] Ollama sidecar container (optional docker-compose profile)
+- [ ] Temporal query detection → LLM code generation → execute → filter results
+- [ ] Timeline summarization at ingestion (infer dates from context)
+- [ ] Graceful degradation: Ollama unavailable → raw retrieval fallback
+- [ ] Config: `OLLAMA_ENABLED=false` (default OFF)
+
+**Requirements:** GPU server or M-series Mac for reasonable inference speed
+**Effort:** 1-2 weeks
+**Priority:** MEDIUM for enterprise (HIGH for benchmark comparison)
+
+### LLM-Powered End-to-End QA
+**Problem:** Our metrics are retrieval-only (Recall@5). Competitors report answer accuracy.
+**Solution:** Retrieved context → LLM answer generation → F1/accuracy scoring
+- [ ] Answer generation pipeline with configurable LLM backend
+- [ ] LLM-as-judge evaluation mode
+- [ ] Compare end-to-end with Mem0 (J=66.9%), Letta (74.0%), Hindsight (89.61%)
+
+**Effort:** 1 week (after Ollama sidecar is deployed)
+
+---
+
 ## Tier 3: Operations & Security
 
 ### 7. Authentication & Authorization
@@ -146,9 +193,10 @@
 |------|-------|----------|
 | Tier 1 | Multi-user foundation | 4-5 weeks |
 | Tier 2 | Search at scale | 3-4 weeks |
+| Tier 2.5 | LLM enhancement (optional) | 2-3 weeks |
 | Tier 3 | Operations & security | 4-6 weeks |
 | Tier 4 | Advanced features | 4-6 weeks |
-| **Total** | **Full enterprise** | **~4 months** |
+| **Total** | **Full enterprise** | **~5 months** |
 
 ---
 
@@ -161,9 +209,13 @@
 | Cross-encoder reranking | ✅ Done (Personal) | Zep |
 | Bi-temporal model | ✅ Partial (node-level done, edge-level TODO) | Zep |
 | Standard benchmarks | ✅ Done — 66.8% LOCOMO Recall@5 | All |
+| RRF fusion | ❌ Planned — replace weighted blend | Hindsight/TEMPR |
 | Cloud deployment | ❌ Missing | Mem0 Cloud, Zep Cloud |
 | LLM entity extraction | ❌ Optional | Mem0, Zep |
+| LLM temporal reasoning | ❌ Planned (Tier 2.5) | TReMu, Hindsight |
 | Framework integrations | ❌ MCP only | All competitors |
-| End-to-end QA | ❌ Retrieval only | Mem0, Letta |
+| End-to-end QA | ❌ Planned (Tier 2.5) | Mem0, Letta, Hindsight |
 
-**Our enterprise differentiator:** Zero-LLM-cost base + optional LLM enhancement. Nobody else offers this hybrid approach.
+**Our enterprise differentiator:** Zero-LLM-cost base + optional LLM enhancement.
+Core runs on 8GB RAM / $5 VPS. Nobody else scales down this far.
+Competitors REQUIRE LLM for basic operation. We don't.
