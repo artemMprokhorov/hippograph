@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- CSP: Security policy -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://d3js.org; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:5001 http://localhost:5002 https://*.ngrok-free.app; img-src 'self' data:;">
     <title>HippoGraph - Neural Memory Visualization</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -16,768 +15,507 @@
             color: #e0e0e0;
             overflow: hidden;
         }
-        
-        /* Controls Panel */
-        #controls {
+
+        /* Collapsible Panels */
+        .panel {
             position: absolute;
-            top: 15px;
-            left: 15px;
             background: rgba(20, 20, 20, 0.95);
-            padding: 20px;
             border-radius: 12px;
             border: 1px solid #333;
             z-index: 1000;
-            max-width: 320px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            transition: height 0.3s ease;
         }
-        
-        h3 {
-            margin: 0 0 15px 0;
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 1px solid #333;
+        }
+        .panel-header:hover { background: rgba(74, 158, 255, 0.1); }
+        .panel-header h3 {
+            margin: 0;
             color: #4a9eff;
-            font-size: 18px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        
-        .control-group {
-            margin: 15px 0;
-            padding: 12px 0;
-            border-top: 1px solid #333;
+        .panel-toggle {
+            color: #666;
+            font-size: 16px;
+            transition: transform 0.3s;
         }
-        
-        .control-group:first-of-type { border-top: none; }
-        
+        .panel.collapsed .panel-body { display: none; }
+        .panel.collapsed .panel-toggle { transform: rotate(-90deg); }
+        .panel.collapsed .panel-header { border-bottom: none; }
+        .panel-body { padding: 16px; }
+
+        /* Panel positions */
+        #controls { top: 15px; left: 15px; max-width: 300px; }
+        #info { top: 15px; right: 15px; max-width: 340px; max-height: calc(100vh - 30px); }
+        #info .panel-body { overflow-y: auto; max-height: calc(100vh - 100px); }
+        #info .panel-body::-webkit-scrollbar { width: 8px; }
+        #info .panel-body::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 4px; }
+        #info .panel-body::-webkit-scrollbar-thumb { background: #4a9eff; border-radius: 4px; }
+        #legend { bottom: 15px; right: 15px; max-width: 220px; max-height: 300px; }
+        #legend .panel-body { overflow-y: auto; max-height: 250px; }
+        #timeline { bottom: 15px; left: 50%; transform: translateX(-50%); width: 400px; }
+
+        /* Shared UI */
+        .stat {
+            margin: 8px 0; font-size: 13px; padding: 8px;
+            background: #1a1a1a; border-radius: 6px; border-left: 3px solid #4a9eff;
+        }
+        .stat strong { color: #4a9eff; }
         label {
-            display: block;
-            margin: 8px 0 5px 0;
-            font-size: 12px;
-            color: #aaa;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            display: block; margin: 8px 0 5px 0; font-size: 12px;
+            color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;
         }
-        
         button {
             background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
-            color: #fff;
-            border: 1px solid #444;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-            width: 100%;
-            margin: 4px 0;
+            color: #fff; border: 1px solid #444; padding: 10px 16px;
+            border-radius: 6px; cursor: pointer; font-size: 13px;
+            transition: all 0.2s; width: 100%; margin: 4px 0;
         }
-        
-        button:hover {
-            background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
-            border-color: #4a9eff;
-        }
-        
-        button:active {
-            transform: scale(0.98);
-        }
-        
-        button.primary {
-            background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%);
-            border-color: #4a9eff;
-        }
-        
-        button.primary:hover {
-            background: linear-gradient(135deg, #5aa9ff 0%, #458acf 100%);
-        }
-        
-        input[type="checkbox"] {
-            margin-right: 8px;
-            cursor: pointer;
-        }
-        
+        button:hover { background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%); border-color: #4a9eff; }
+        button:active { transform: scale(0.98); }
+        button.primary { background: linear-gradient(135deg, #4a9eff 0%, #357abd 100%); border-color: #4a9eff; }
+        button.primary:hover { background: linear-gradient(135deg, #5aa9ff 0%, #458acf 100%); }
+        input[type="checkbox"] { margin-right: 8px; cursor: pointer; }
         select, input[type="text"], input[type="range"] {
-            width: 100%;
-            padding: 8px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            color: #e0e0e0;
-            font-size: 13px;
-            margin-top: 5px;
+            width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #333;
+            border-radius: 6px; color: #e0e0e0; font-size: 13px; margin-top: 5px;
         }
-        
-        select:focus, input:focus {
-            outline: none;
-            border-color: #4a9eff;
-        }
-        
-        input[type="range"] {
-            padding: 0;
-            height: 6px;
-        }
-        
-        /* Info Panel */
-        #info {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(20, 20, 20, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            max-width: 350px;
-            max-height: calc(100vh - 30px);
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        
-        #info::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        #info::-webkit-scrollbar-track {
-            background: #1a1a1a;
-            border-radius: 4px;
-        }
-        
-        #info::-webkit-scrollbar-thumb {
-            background: #4a9eff;
-            border-radius: 4px;
-        }
-        
-        .stat {
-            margin: 8px 0;
-            font-size: 13px;
-            padding: 8px;
-            background: #1a1a1a;
-            border-radius: 6px;
-            border-left: 3px solid #4a9eff;
-        }
-        
-        .stat strong {
-            color: #4a9eff;
-        }
-        
-        /* Graph Elements */
-        .node {
-            cursor: pointer;
-            stroke: #000;
-            stroke-width: 2px;
-            transition: r 0.2s;
-        }
-        
-        .node:hover {
-            stroke: #4a9eff;
-            stroke-width: 3px;
-        }
-        
-        .node.highlighted {
-            stroke: #ff6b35;
-            stroke-width: 4px;
-        }
-        
-        .node.faded {
-            opacity: 0.2;
-        }
-        
-        .link {
-            /* Default styling - will be overridden by D3 */
-            transition: stroke 0.2s, stroke-opacity 0.2s;
-        }
-        
-        .link.weighted {
-            /* Weight-based gradient applied dynamically */
-        }
-        
-        .link.highlighted {
-            stroke: #4a9eff;
-            stroke-opacity: 0.8;
-            stroke-width: 2px;
-        }
-        
-        .link.faded {
-            opacity: 0.1;
-        }
-        
-        .link-weight-label {
-            font-size: 9px;
-            fill: #aaa;
+        select:focus, input:focus { outline: none; border-color: #4a9eff; }
+        input[type="range"] { padding: 0; height: 6px; }
+
+        /* Graph layers */
+        #link-canvas {
+            position: absolute; top: 0; left: 0;
             pointer-events: none;
-            text-anchor: middle;
         }
-        
-        .node-label {
-            font-size: 10px;
-            fill: #aaa;
-            pointer-events: none;
-            text-anchor: middle;
+        #graph {
+            position: absolute; top: 0; left: 0;
         }
-        
-        /* Loading */
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 18px;
-            color: #4a9eff;
-        }
-        
-        /* Category Legend */
-        #legend {
-            position: absolute;
-            bottom: 15px;
-            right: 15px;
-            background: rgba(20, 20, 20, 0.95);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            font-size: 11px;
-            max-width: 220px;
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-        }
-        
+        .node { cursor: pointer; stroke: #000; stroke-width: 2px; }
+        .node:hover { stroke: #4a9eff; stroke-width: 3px; }
+        .node.highlighted { stroke: #ff6b35; stroke-width: 4px; }
+        .node.faded { opacity: 0.15; }
+        .link.faded { opacity: 0.05; }
+        .link.highlighted { stroke: #4a9eff; stroke-opacity: 0.8; stroke-width: 2px; }
+        .node-label { font-size: 10px; fill: #aaa; pointer-events: none; text-anchor: middle; }
+
         .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 5px 0;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
+            display: flex; align-items: center; gap: 8px; margin: 5px 0;
+            cursor: pointer; padding: 4px; border-radius: 4px;
         }
-        
-        .legend-item:hover {
-            background: #2a2a2a;
+        .legend-item:hover { background: #2a2a2a; }
+        .legend-color { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #000; }
+        .loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); font-size: 18px; color: #4a9eff;
         }
-        
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 1px solid #000;
+        .timeline-label {
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: #aaa; margin-top: 5px;
         }
-        
+
         /* Weight Legend */
         #weightLegend {
-            position: absolute;
-            bottom: 230px;
-            left: 15px;
-            background: rgba(20, 20, 20, 0.95);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            font-size: 11px;
-            max-width: 200px;
+            position: absolute; bottom: 230px; left: 15px;
+            background: rgba(20, 20, 20, 0.95); padding: 15px;
+            border-radius: 12px; border: 1px solid #333; font-size: 11px; max-width: 200px;
         }
-        
         .weight-gradient-bar {
-            width: 100%;
-            height: 20px;
+            width: 100%; height: 20px;
             background: linear-gradient(to right, #333 0%, #4a9eff 100%);
-            border-radius: 4px;
-            margin: 8px 0;
-            border: 1px solid #555;
+            border-radius: 4px; margin: 8px 0; border: 1px solid #555;
         }
-        
-        .weight-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 9px;
-            color: #888;
-        }
-        
-        /* Timeline Slider */
-        #timeline {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(20, 20, 20, 0.95);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            width: 400px;
-        }
-        
-        .timeline-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: #aaa;
-            margin-top: 5px;
-        }
+        .weight-labels { display: flex; justify-content: space-between; font-size: 9px; color: #888; }
+
+        /* FPS counter */
+        #fps { position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+            color: #666; font-size: 10px; z-index: 999; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <h3>🧠 HippoGraph</h3>
-        
-        <div id="configPanel" style="background: #2a1a1a; padding: 15px; border-radius: 8px; border: 2px solid #ff6b35; margin-bottom: 15px;">
-            <h4 style="margin: 0 0 10px 0; color: #ff6b35; font-size: 14px;">⚠️ Configuration Required</h4>
-            <label style="font-size: 11px;">API Endpoint URL</label>
-            <input type="text" id="apiUrl" placeholder="http://localhost:5001/sse2" value="http://localhost:5001/sse2" style="margin-bottom: 8px;">
-            <label style="font-size: 11px;">API Key</label>
-            <input type="password" id="apiKey" placeholder="Your API key">
-            <button class="primary" onclick="saveConfigAndLoad()" style="margin-top: 10px;">Connect & Load</button>
-            <p style="font-size: 10px; color: #aaa; margin: 10px 0 0 0; line-height: 1.4;">
-                ⚠️ <strong>Security:</strong> This connects to YOUR local server by default (localhost). 
-                Never commit API keys to git! See GRAPH_VIEWER.md for setup.
-            </p>
+
+    <!-- Controls Panel (left) -->
+    <div id="controls" class="panel">
+        <div class="panel-header" onclick="togglePanel('controls')">
+            <h3>🧠 HippoGraph</h3>
+            <span class="panel-toggle">▼</span>
         </div>
-        
-        <div id="mainControls" style="display: none;">
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="primary" onclick="loadFullGraph()">Load Full Graph</button>
-            <button class="secondary" onclick="refreshData()" style="background: #4a9eff; color: white; border: 1px solid #6bb3ff;">🔄 Refresh Data</button>
-        </div>
-        
-        <div class="control-group">
-            <label>Search</label>
-            <input type="text" id="searchInput" placeholder="Search notes..." onkeyup="handleSearch()">
-        </div>
-        
-        <div class="control-group">
-            <label>Filter by Category</label>
-            <select id="categoryFilter" onchange="applyFilters()">
-                <option value="">All Categories</option>
-            </select>
-        </div>
-        
-        <div class="control-group">
-            <label>Node Size: <span id="nodeSizeValue">8</span>px</label>
-            <input type="range" id="nodeSize" min="4" max="20" value="8" oninput="updateNodeSize(this.value)">
-        </div>
-        
-        <div class="control-group">
-            <label>
-                <input type="checkbox" id="showLabels" checked onchange="toggleLabels()">
-                Show Node Labels
-            </label>
-            <label>
-                <input type="checkbox" id="showEntityLinks" checked onchange="applyFilters()">
-                Show Entity Links
-            </label>
-            <label>
-                <input type="checkbox" id="showSemanticLinks" checked onchange="applyFilters()">
-                Show Semantic Links
-            </label>
-            <label>
-                <input type="checkbox" id="showLinkWeights" onchange="toggleLinkWeights()">
-                Show Link Weights
-            </label>
-        </div>
-        
-        <button onclick="resetZoom()">Reset View</button>
-        <button onclick="centerGraph()">Center Graph</button>
+        <div class="panel-body">
+            <div id="configPanel" style="background: #2a1a1a; padding: 15px; border-radius: 8px; border: 2px solid #ff6b35; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #ff6b35; font-size: 14px;">⚠️ Configuration Required</h4>
+                <label style="font-size: 11px;">API Endpoint URL</label>
+                <input type="text" id="apiUrl" placeholder="http://localhost:5001/sse2" value="http://localhost:5001/sse2" style="margin-bottom: 8px;">
+                <label style="font-size: 11px;">API Key</label>
+                <input type="password" id="apiKey" placeholder="Your API key">
+                <button class="primary" onclick="saveConfigAndLoad()" style="margin-top: 10px;">Connect & Load</button>
+                <p style="font-size: 10px; color: #aaa; margin: 10px 0 0 0; line-height: 1.4;">
+                    ⚠️ <strong>Security:</strong> Connects to YOUR local server. Never commit API keys!
+                </p>
+            </div>
+            <div id="mainControls" style="display: none;">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button class="primary" onclick="loadFullGraph()">Load Full Graph</button>
+                    <button onclick="refreshData()" style="background: #4a9eff; color: white; border: 1px solid #6bb3ff;">🔄 Refresh</button>
+                </div>
+                <div class="control-group" style="border-top: 1px solid #333; padding-top: 12px;">
+                    <label>Search</label>
+                    <input type="text" id="searchInput" placeholder="Search notes..." onkeyup="handleSearch()">
+                </div>
+                <div class="control-group" style="border-top: 1px solid #333; padding-top: 12px;">
+                    <label>Filter by Category</label>
+                    <select id="categoryFilter" onchange="applyFilters()"><option value="">All Categories</option></select>
+                </div>
+                <div class="control-group" style="border-top: 1px solid #333; padding-top: 12px;">
+                    <label>Node Size: <span id="nodeSizeValue">8</span>px</label>
+                    <input type="range" id="nodeSize" min="4" max="20" value="8" oninput="updateNodeSize(this.value)">
+                </div>
+                <div class="control-group" style="border-top: 1px solid #333; padding-top: 12px;">
+                    <label><input type="checkbox" id="showLabels" checked onchange="toggleLabels()"> Show Node Labels</label>
+                    <label><input type="checkbox" id="showEntityLinks" checked onchange="applyFilters()"> Show Entity Links</label>
+                    <label><input type="checkbox" id="showSemanticLinks" checked onchange="applyFilters()"> Show Semantic Links</label>
+                    <label><input type="checkbox" id="showLinkWeights" onchange="toggleLinkWeights()"> Show Link Weights</label>
+                </div>
+                <button onclick="fitToScreen()">Fit to Screen</button>
+                <button onclick="centerGraph()">Re-layout</button>
+            </div>
         </div>
     </div>
-    
-    <div id="info">
-        <h3>Graph Statistics</h3>
-        <div id="stats">
-            <div class="stat">Click "Load Full Graph" to begin</div>
+
+    <!-- Stats Panel (right top) -->
+    <div id="info" class="panel">
+        <div class="panel-header" onclick="togglePanel('info')">
+            <h3>Graph Statistics</h3>
+            <span class="panel-toggle">▼</span>
         </div>
-        <div id="nodeInfo"></div>
+        <div class="panel-body">
+            <div id="stats"><div class="stat">Click "Load Full Graph" to begin</div></div>
+            <div id="nodeInfo"></div>
+        </div>
     </div>
-    
-    <div id="legend">
-        <h3 style="font-size: 13px; margin-bottom: 10px;">Categories</h3>
-        <div id="legendContent"></div>
+
+    <!-- Categories Legend (right bottom) -->
+    <div id="legend" class="panel">
+        <div class="panel-header" onclick="togglePanel('legend')">
+            <h3 style="font-size: 13px;">Categories</h3>
+            <span class="panel-toggle">▼</span>
+        </div>
+        <div class="panel-body"><div id="legendContent"></div></div>
     </div>
-    
+
+    <!-- Weight Legend -->
     <div id="weightLegend" style="display: none;">
         <h3 style="font-size: 13px; margin-bottom: 10px;">Link Weights</h3>
         <div class="weight-gradient-bar"></div>
-        <div class="weight-labels">
-            <span>Weak (0.0)</span>
-            <span>Strong (1.0)</span>
+        <div class="weight-labels"><span>Weak (0.0)</span><span>Strong (1.0)</span></div>
+    </div>
+
+    <!-- Timeline Panel (bottom center) -->
+    <div id="timeline" class="panel">
+        <div class="panel-header" onclick="togglePanel('timeline')">
+            <h3 style="font-size: 13px;">Timeline Filter</h3>
+            <span class="panel-toggle">▼</span>
         </div>
-        <div style="margin-top: 10px; font-size: 10px; color: #aaa; line-height: 1.4;">
-            Semantic links: similarity<br>
-            Entity links: shared entities
+        <div class="panel-body" style="padding: 10px 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="range" id="timelineSlider" min="0" max="100" value="100" oninput="updateTimeline(this.value)" style="flex: 1;">
+                <button id="playPauseBtn" onclick="toggleAutoPlay()" style="width: auto; padding: 4px 12px; font-size: 11px; margin: 0;">▶ Play</button>
+            </div>
+            <div class="timeline-label">
+                <span id="timelineStart">Loading...</span>
+                <span id="timelineEnd">Now</span>
+            </div>
+            <div style="font-size: 10px; color: #aaa; margin-top: 5px; text-align: center;">
+                <span id="timelineInfo">Showing all notes</span>
+            </div>
         </div>
     </div>
-    
-    <div id="timeline">
-        <label style="font-size: 12px; color: #4a9eff; display: flex; justify-content: space-between; align-items: center;">
-            <span>Timeline Filter</span>
-            <button id="playPauseBtn" onclick="toggleAutoPlay()" style="width: auto; padding: 4px 12px; font-size: 11px; margin: 0;">▶ Play</button>
-        </label>
-        <input type="range" id="timelineSlider" min="0" max="100" value="100" oninput="updateTimeline(this.value)">
-        <div class="timeline-label">
-            <span id="timelineStart">Loading...</span>
-            <span id="timelineEnd">Now</span>
-        </div>
-        <div style="font-size: 10px; color: #aaa; margin-top: 5px; text-align: center;">
-            <span id="timelineInfo">Showing all notes</span>
-        </div>
-    </div>
-    
+
+    <div id="fps"></div>
+
+    <!-- Canvas for links (behind SVG) -->
+    <canvas id="link-canvas"></canvas>
+    <!-- SVG for nodes and labels (on top) -->
     <svg id="graph"></svg>
-    
+
     <script>
-        // Security: HTML escaping to prevent XSS
+        // === Security ===
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
-            return unsafe
-                .toString()
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return unsafe.toString()
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
-        
-        // Configuration
+
+        // === Panel Collapse ===
+        function togglePanel(id) {
+            document.getElementById(id).classList.toggle('collapsed');
+        }
+
+        // === Configuration ===
         let API_URL = '';
         let API_KEY = '';
-        
-        // State
+
+        // === State ===
         let allNodes = [];
         let allLinks = [];
         let filteredNodes = [];
         let filteredLinks = [];
         let simulation = null;
         let nodeElements = null;
-        let linkElements = null;
         let labelElements = null;
-        
-        // SVG Setup
+        let currentTransform = d3.zoomIdentity;
+
+        // === Canvas + SVG Setup ===
         const width = window.innerWidth;
         const height = window.innerHeight;
-        const svg = d3.select('#graph')
-            .attr('width', width)
-            .attr('height', height);
-        
+
+        const canvas = document.getElementById('link-canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        const svg = d3.select('#graph').attr('width', width).attr('height', height);
         const g = svg.append('g');
-        
-        // Zoom behavior
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 10])
+
+        // === Zoom (synced: Canvas + SVG) ===
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.02, 10])
             .on('zoom', (event) => {
-                g.attr('transform', event.transform);
+                currentTransform = event.transform;
+                g.attr('transform', currentTransform);
+                drawLinks(); // redraw canvas links on zoom/pan
             });
-        
-        svg.call(zoom);
-        
-        // Color mapping (expanded)
+        svg.call(zoomBehavior);
+
+        // === Color ===
         const categoryColors = {
-            'milestone': '#4a9eff',
-            'self-reflection': '#9d4edd',
-            'technical-insight': '#06ffa5',
-            'breakthrough': '#ff6b35',
-            'session-end': '#f72585',
-            'self-identity': '#ffd60a',
-            'critical-knowledge': '#ff006e',
-            'security-solution': '#fb5607',
-            'observations': '#8338ec',
-            'self-awareness': '#3a86ff',
-            'gratitude': '#ffbe0b',
-            'project-status': '#06ffa5',
+            'milestone': '#4a9eff', 'self-reflection': '#9d4edd',
+            'technical-insight': '#06ffa5', 'breakthrough': '#ff6b35',
+            'session-end': '#f72585', 'self-identity': '#ffd60a',
+            'critical-knowledge': '#ff006e', 'security-solution': '#fb5607',
+            'observations': '#8338ec', 'self-awareness': '#3a86ff',
+            'gratitude': '#ffbe0b', 'project-status': '#06ffa5',
             'default': '#666'
         };
-        
-        function getColor(category) {
-            return categoryColors[category] || categoryColors.default;
+        function getColor(cat) { return categoryColors[cat] || categoryColors.default; }
+        function getWeightColor(w) {
+            w = Math.max(0, Math.min(1, w));
+            const r = Math.round(0x33 + (0x4a - 0x33) * w);
+            const g = Math.round(0x33 + (0x9e - 0x33) * w);
+            const b = Math.round(0x33 + (0xff - 0x33) * w);
+            return `rgb(${r},${g},${b})`;
         }
-        
-        // Weight to color mapping
-        function getWeightColor(weight) {
-            // Gradient from dark gray (#333) to bright blue (#4a9eff)
-            const w = Math.max(0, Math.min(1, weight)); // Clamp 0-1
-            
-            // Interpolate RGB
-            const r1 = 0x33, g1 = 0x33, b1 = 0x33; // #333
-            const r2 = 0x4a, g2 = 0x9e, b2 = 0xff; // #4a9eff
-            
-            const r = Math.round(r1 + (r2 - r1) * w);
-            const g = Math.round(g1 + (g2 - g1) * w);
-            const b = Math.round(b1 + (b2 - b1) * w);
-            
-            return `rgb(${r}, ${g}, ${b})`;
+        function getWeightOpacity(w) { return 0.15 + w * 0.5; }
+
+        // === Draw Links on Canvas (FAST) ===
+        function drawLinks() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(currentTransform.x, currentTransform.y);
+            ctx.scale(currentTransform.k, currentTransform.k);
+
+            const showWeights = document.getElementById('showLinkWeights').checked;
+
+            for (let i = 0; i < filteredLinks.length; i++) {
+                const d = filteredLinks[i];
+                if (!d.source.x || !d.target.x) continue;
+
+                ctx.beginPath();
+                ctx.moveTo(d.source.x, d.source.y);
+                ctx.lineTo(d.target.x, d.target.y);
+
+                if (showWeights) {
+                    ctx.strokeStyle = getWeightColor(d.weight || 0.5);
+                    ctx.globalAlpha = getWeightOpacity(d.weight || 0.5);
+                    ctx.lineWidth = d.type === 'semantic' ? 1.5 : 0.8;
+                } else {
+                    ctx.strokeStyle = '#444';
+                    ctx.globalAlpha = 0.2;
+                    ctx.lineWidth = d.type === 'semantic' ? 1 : 0.5;
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
         }
-        
-        function getWeightOpacity(weight) {
-            // Opacity from 0.2 (weak) to 0.8 (strong)
-            return 0.2 + (weight * 0.6);
-        }
-        
-        // Config Management with expiration
+
+        // === Config Management ===
         function saveConfigAndLoad() {
             API_URL = document.getElementById('apiUrl').value.trim();
             API_KEY = document.getElementById('apiKey').value.trim();
-            
-            if (!API_URL || !API_KEY) {
-                alert('Please provide both API URL and API Key');
-                return;
-            }
-            
-            // Validate URL format
-            try {
-                new URL(API_URL);
-            } catch (e) {
-                alert('Invalid API URL format. Please check the URL.');
-                return;
-            }
-            
-            // Save to localStorage for convenience (user's choice)
-            if (confirm('Save configuration locally? (stored in browser only, expires in 7 days)')) {
-                const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+            if (!API_URL || !API_KEY) { alert('Provide both API URL and API Key'); return; }
+            try { new URL(API_URL); } catch (e) { alert('Invalid URL'); return; }
+            if (confirm('Save locally? (browser only, 7 day expiry)')) {
+                const expiry = Date.now() + 7 * 24 * 3600 * 1000;
                 localStorage.setItem('hippograph_api_url', API_URL);
                 localStorage.setItem('hippograph_api_key', API_KEY);
                 localStorage.setItem('hippograph_expiry', expiry.toString());
             }
-            
-            // Hide config panel, show main controls
             document.getElementById('configPanel').style.display = 'none';
             document.getElementById('mainControls').style.display = 'block';
-            
-            // Load graph
             loadFullGraph();
         }
-        
-        // Load saved config on startup with expiry check
+
         window.addEventListener('DOMContentLoaded', () => {
             const savedUrl = localStorage.getItem('hippograph_api_url');
             const savedKey = localStorage.getItem('hippograph_api_key');
             const expiry = localStorage.getItem('hippograph_expiry');
-            
-            // Check if config expired
             if (expiry && Date.now() > parseInt(expiry)) {
-                // Expired - clear all
                 localStorage.removeItem('hippograph_api_url');
                 localStorage.removeItem('hippograph_api_key');
                 localStorage.removeItem('hippograph_expiry');
                 return;
             }
-            
             if (savedUrl) document.getElementById('apiUrl').value = savedUrl;
             if (savedKey) document.getElementById('apiKey').value = savedKey;
         });
-        
-        // API Helper
+
+        // === API ===
         async function callAPI(method, params = {}) {
-            try {
-                const response = await fetch(`${API_URL}?api_key=${API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    cache: 'no-store',
-                    body: JSON.stringify({
-                        jsonrpc: '2.0',
-                        id: Date.now(),
-                        method: 'tools/call',
-                        params: { name: method, arguments: params }
-                    })
-                });
-                
-                const text = await response.text();
-                const data = JSON.parse(text.split('data: ')[1]);
-                return data.result;
-            } catch (error) {
-                console.error('API call failed:', error);
-                throw error;
-            }
+            const response = await fetch(`${API_URL}?api_key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                cache: 'no-store',
+                body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name: method, arguments: params } })
+            });
+            const text = await response.text();
+            return JSON.parse(text.split('data: ')[1]).result;
         }
-        
-        // Refresh Data
-        async function refreshData() {
-            console.log('🔄 Refreshing data...');
-            await loadFullGraph();
-        }
-        
-        // Load Full Graph via REST API
+
+        async function refreshData() { await loadFullGraph(); }
+
+        // === Load Graph ===
         async function loadFullGraph() {
-            document.getElementById('stats').innerHTML = '<div class="stat">⏳ Loading full graph...</div>';
-            
+            document.getElementById('stats').innerHTML = '<div class="stat">⏳ Loading...</div>';
             try {
-                // Use REST API endpoint (proxied through nginx /api/)
                 const apiBase = window.location.origin;
-                const response = await fetch(`${apiBase}/api/graph-data?api_key=${API_KEY}&brief=true`, {
-                    cache: 'no-store'
-                });
-                
+                const response = await fetch(`${apiBase}/api/graph-data?api_key=${API_KEY}&brief=true`, { cache: 'no-store' });
                 if (!response.ok) {
                     if (response.status === 401) throw new Error('Invalid API key');
                     throw new Error(`HTTP ${response.status}`);
                 }
-                
                 const data = await response.json();
-                
-                // Build node map
+
                 const nodeMap = new Map();
                 data.nodes.forEach(n => {
                     nodeMap.set(String(n.id), {
-                        id: String(n.id),
-                        category: n.category || 'general',
+                        id: String(n.id), category: n.category || 'general',
                         content: n.preview || n.content || '',
-                        label: `#${n.id}`,
-                        importance: n.importance || 'normal',
+                        label: `#${n.id}`, importance: n.importance || 'normal',
                         emotional_tone: n.emotional_tone || '',
                         emotional_intensity: n.emotional_intensity || 0,
-                        timestamp: n.timestamp || '',
-                        full_length: n.full_length || 0
+                        timestamp: n.timestamp || '', full_length: n.full_length || 0
                     });
                 });
-                
                 allNodes = Array.from(nodeMap.values());
-                
-                // Build links (only for nodes we have)
+
                 allLinks = [];
-                let skippedLinks = 0;
                 data.edges.forEach(e => {
-                    const sourceId = String(e.source);
-                    const targetId = String(e.target);
-                    if (nodeMap.has(sourceId) && nodeMap.has(targetId)) {
-                        allLinks.push({
-                            source: sourceId,
-                            target: targetId,
-                            type: e.type || 'semantic',
-                            weight: e.weight || 0.5
-                        });
-                    } else {
-                        skippedLinks++;
+                    const s = String(e.source), t = String(e.target);
+                    if (nodeMap.has(s) && nodeMap.has(t)) {
+                        allLinks.push({ source: s, target: t, type: e.type || 'semantic', weight: e.weight || 0.5 });
                     }
                 });
-                
-                // Update stats
+
                 document.getElementById('stats').innerHTML = `
                     <div class="stat"><strong>Total DB:</strong> ${data.stats.total_nodes} nodes, ${data.stats.total_edges} edges</div>
                     <div class="stat"><strong>Loaded:</strong> ${allNodes.length} nodes, ${allLinks.length} links</div>
-                    <div class="stat"><strong>Note:</strong> Graph shows all nodes. Click a node to see details.</div>
+                    <div class="stat" style="border-left-color: #06ffa5;"><strong>Note:</strong> Click node for details. Collapse panels for more space.</div>
                 `;
-                
-                // Build category filter
+
                 const categories = [...new Set(allNodes.map(n => n.category))].sort();
-                const categoryFilter = document.getElementById('categoryFilter');
-                categoryFilter.innerHTML = '<option value="">All Categories</option>';
+                const sel = document.getElementById('categoryFilter');
+                sel.innerHTML = '<option value="">All Categories</option>';
                 categories.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat;
-                    option.textContent = `${cat} (${allNodes.filter(n => n.category === cat).length})`;
-                    categoryFilter.appendChild(option);
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.textContent = `${cat} (${allNodes.filter(n => n.category === cat).length})`;
+                    sel.appendChild(opt);
                 });
-                
-                // Build legend
                 buildLegend(categories);
-                
-                // Setup timeline
                 setupTimeline();
-                
-                // For large graphs, limit rendered links to keep performance
-                if (allLinks.length > 5000) {
-                    console.log(`Large graph: ${allLinks.length} links, filtering to top weighted`);
+
+                // For large graphs, keep top-weighted links
+                if (allLinks.length > 10000) {
+                    console.log(`Large graph: ${allLinks.length} links, keeping top 10000`);
                     allLinks.sort((a, b) => (b.weight || 0) - (a.weight || 0));
-                    allLinks = allLinks.slice(0, 5000);
+                    allLinks = allLinks.slice(0, 10000);
                 }
-                
-                // Initial render
                 applyFilters();
-                
             } catch (error) {
-                document.getElementById('stats').innerHTML = 
-                    `<div class="stat" style="border-left-color: #ff006e;">❌ Error: ${escapeHtml(error.message)}</div>`;
+                document.getElementById('stats').innerHTML =
+                    `<div class="stat" style="border-left-color: #ff006e;">Error: ${escapeHtml(error.message)}</div>`;
             }
         }
-        
-        // Fetch full node content on click
+
+        // === Fetch node detail ===
         async function fetchNodeDetail(nodeId) {
             try {
                 const apiBase = window.location.origin;
-                const response = await fetch(`${apiBase}/api/node/${nodeId}?api_key=${API_KEY}`);
-                if (!response.ok) return null;
-                return await response.json();
-            } catch (e) {
-                return null;
-            }
+                const r = await fetch(`${apiBase}/api/node/${nodeId}?api_key=${API_KEY}`);
+                if (!r.ok) return null;
+                return await r.json();
+            } catch (e) { return null; }
         }
-        
+
+        // === Legend ===
         function buildLegend(categories) {
-            const legendContent = document.getElementById('legendContent');
-            legendContent.innerHTML = '';
-            
-            const topCategories = categories
-                .map(cat => ({
-                    name: cat,
-                    count: allNodes.filter(n => n.category === cat).length,
-                    color: getColor(cat)
-                }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10);
-            
-            topCategories.forEach(cat => {
+            const el = document.getElementById('legendContent');
+            el.innerHTML = '';
+            categories.map(cat => ({
+                name: cat, count: allNodes.filter(n => n.category === cat).length, color: getColor(cat)
+            })).sort((a, b) => b.count - a.count).slice(0, 15).forEach(cat => {
                 const item = document.createElement('div');
                 item.className = 'legend-item';
-                item.innerHTML = `
-                    <div class="legend-color" style="background: ${cat.color}"></div>
-                    <span>${cat.name} (${cat.count})</span>
-                `;
-                item.onclick = () => {
-                    document.getElementById('categoryFilter').value = cat.name;
-                    applyFilters();
-                };
-                legendContent.appendChild(item);
+                item.innerHTML = `<div class="legend-color" style="background:${cat.color}"></div><span>${cat.name} (${cat.count})</span>`;
+                item.onclick = () => { document.getElementById('categoryFilter').value = cat.name; applyFilters(); };
+                el.appendChild(item);
             });
         }
-        
+
+        // === Timeline ===
         function setupTimeline() {
             if (allNodes.length === 0) return;
-            
-            // Use node IDs as proxy for time (sequential creation)
             const ids = allNodes.map(n => parseInt(n.id)).sort((a, b) => a - b);
-            
-            if (ids.length === 0) return;
-            
             window.timelineMinId = ids[0];
             window.timelineMaxId = ids[ids.length - 1];
-            
-            // Estimate dates based on ID range (assume ~2 weeks of data)
-            const startDate = new Date('2026-01-22');
-            const endDate = new Date('2026-02-04');
-            
-            const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            document.getElementById('timelineStart').textContent = startStr;
-            document.getElementById('timelineEnd').textContent = endStr;
-            
+            const startDate = new Date('2026-01-22'), endDate = new Date('2026-02-18');
+            document.getElementById('timelineStart').textContent = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            document.getElementById('timelineEnd').textContent = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             window.timelineStartDate = startDate;
             window.timelineEndDate = endDate;
-            
-            // Reset slider
             document.getElementById('timelineSlider').value = 100;
             updateTimelineInfo(100);
         }
-        
+
         function updateTimelineInfo(percent) {
-            const visibleCount = filteredNodes.length;
-            const totalCount = allNodes.length;
-            
+            const vis = filteredNodes.length, total = allNodes.length;
             if (percent >= 100) {
-                document.getElementById('timelineInfo').textContent = `Showing all ${visibleCount} notes`;
+                document.getElementById('timelineInfo').textContent = `Showing all ${vis} notes`;
             } else {
-                const cutoffDate = new Date(
-                    window.timelineStartDate.getTime() + 
-                    (window.timelineEndDate.getTime() - window.timelineStartDate.getTime()) * percent / 100
-                );
-                const dateStr = cutoffDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                document.getElementById('timelineInfo').textContent = `Up to ${dateStr} (${visibleCount}/${totalCount} notes)`;
+                const cutoff = new Date(window.timelineStartDate.getTime() +
+                    (window.timelineEndDate.getTime() - window.timelineStartDate.getTime()) * percent / 100);
+                document.getElementById('timelineInfo').textContent =
+                    `Up to ${cutoff.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} (${vis}/${total})`;
             }
         }
-        
+
+        // === Filters ===
         function applyFilters() {
-            const categoryFilter = document.getElementById('categoryFilter').value;
+            const catFilter = document.getElementById('categoryFilter').value;
             const showEntity = document.getElementById('showEntityLinks').checked;
             const showSemantic = document.getElementById('showSemanticLinks').checked;
-            
-            // Filter nodes
-            filteredNodes = allNodes.filter(node => {
-                if (categoryFilter && node.category !== categoryFilter) return false;
-                return true;
-            });
-            
-            // Filter links
+            filteredNodes = allNodes.filter(n => !catFilter || n.category === catFilter);
             const nodeIds = new Set(filteredNodes.map(n => n.id));
             filteredLinks = allLinks.filter(link => {
                 if (!nodeIds.has(link.source.id || link.source)) return false;
@@ -786,58 +524,35 @@
                 if (link.type === 'semantic' && !showSemantic) return false;
                 return true;
             });
-            
             renderGraph();
         }
-        
+
+        // === RENDER GRAPH (Canvas links + SVG nodes) ===
         function renderGraph() {
-            // Clear existing
             g.selectAll('*').remove();
-            
-            if (filteredNodes.length === 0) {
-                document.getElementById('stats').innerHTML += 
-                    '<div class="stat" style="border-left-color: #ffbe0b;">⚠️ No nodes match filters</div>';
-                return;
-            }
-            
-            // Create simulation
+            if (filteredNodes.length === 0) return;
+
+            // Simulation — optimized for large graphs
+            const nodeCount = filteredNodes.length;
+            const chargeStrength = nodeCount > 300 ? -150 : -300;
+            const linkDist = nodeCount > 300 ? 60 : 100;
+            const collideR = nodeCount > 300 ? 20 : 40;
+            const decayRate = nodeCount > 300 ? 0.05 : 0.0228;
+
             simulation = d3.forceSimulation(filteredNodes)
-                .force('link', d3.forceLink(filteredLinks).id(d => d.id).distance(100))
-                .force('charge', d3.forceManyBody().strength(-300))
+                .force('link', d3.forceLink(filteredLinks).id(d => d.id).distance(linkDist))
+                .force('charge', d3.forceManyBody().strength(chargeStrength).theta(0.9))
                 .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(40));
-            
-            // IMPORTANT: Draw links FIRST, then nodes on top
-            // This ensures nodes are clickable and links are behind
-            
-            // Draw links FIRST
-            const showWeights = document.getElementById('showLinkWeights').checked;
-            
-            const linkGroup = g.append('g').attr('class', 'links-layer');
-            
-            linkElements = linkGroup
-                .selectAll('line')
-                .data(filteredLinks)
-                .enter().append('line')
-                .attr('class', 'link')
-                .attr('stroke', d => showWeights ? getWeightColor(d.weight || 0.5) : '#666')
-                .attr('stroke-opacity', d => showWeights ? getWeightOpacity(d.weight || 0.5) : 0.3)
-                .attr('stroke-width', d => {
-                    const baseWidth = d.type === 'semantic' ? 2 : 1;
-                    return showWeights ? baseWidth + (d.weight || 0) * 2 : baseWidth;
-                })
-                .on('click', (event, d) => showLinkInfo(event, d))
-                .style('cursor', 'pointer');
-            
-            // Draw nodes AFTER links (on top)
+                .force('collision', d3.forceCollide().radius(collideR))
+                .alphaDecay(decayRate);
+
+            // SVG Nodes
             const nodeGroup = g.append('g').attr('class', 'nodes-layer');
-            
-            nodeElements = nodeGroup
-                .selectAll('circle')
-                .data(filteredNodes)
-                .enter().append('circle')
-                .attr('class', 'node')
-                .attr('r', 8)
+            const nodeSize = parseInt(document.getElementById('nodeSize').value) || 8;
+
+            nodeElements = nodeGroup.selectAll('circle')
+                .data(filteredNodes).enter().append('circle')
+                .attr('class', 'node').attr('r', nodeSize)
                 .attr('fill', d => getColor(d.category))
                 .on('click', (event, d) => showNodeInfo(d))
                 .on('mouseover', (event, d) => highlightNode(d))
@@ -846,208 +561,177 @@
                     .on('start', dragstarted)
                     .on('drag', dragged)
                     .on('end', dragended));
-            
-            // Draw labels LAST (on top of everything)
+
+            // SVG Labels
             const labelGroup = g.append('g').attr('class', 'labels-layer');
-            
             const showLabels = document.getElementById('showLabels').checked;
-            
-            labelElements = labelGroup
-                .selectAll('text')
-                .data(filteredNodes)
-                .enter().append('text')
-                .attr('class', 'node-label')
-                .text(d => d.label)
-                .attr('dy', 20)
+            labelElements = labelGroup.selectAll('text')
+                .data(filteredNodes).enter().append('text')
+                .attr('class', 'node-label').text(d => d.label).attr('dy', 20)
                 .style('display', showLabels ? 'block' : 'none');
-            
-            // Update positions on tick
+
+            // Tick: update node positions (SVG) + redraw links (Canvas)
+            let tickCount = 0;
             simulation.on('tick', () => {
-                linkElements
-                    .attr('x1', d => d.source.x)
-                    .attr('y1', d => d.source.y)
-                    .attr('x2', d => d.target.x)
-                    .attr('y2', d => d.target.y);
-                
-                nodeElements
-                    .attr('cx', d => d.x)
-                    .attr('cy', d => d.y);
-                
-                labelElements
-                    .attr('x', d => d.x)
-                    .attr('y', d => d.y);
-            });
-        }
-        
-        function highlightNode(node) {
-            const connectedNodes = new Set();
-            const connectedLinks = new Set();
-            
-            allLinks.forEach(link => {
-                const sourceId = link.source.id || link.source;
-                const targetId = link.target.id || link.target;
-                
-                if (sourceId === node.id) {
-                    connectedNodes.add(targetId);
-                    connectedLinks.add(link);
-                } else if (targetId === node.id) {
-                    connectedNodes.add(sourceId);
-                    connectedLinks.add(link);
+                tickCount++;
+                // Throttle canvas redraws: every tick for small, every 2nd for large
+                if (nodeCount < 300 || tickCount % 2 === 0) {
+                    drawLinks();
                 }
+                nodeElements.attr('cx', d => d.x).attr('cy', d => d.y);
+                labelElements.attr('x', d => d.x).attr('y', d => d.y);
             });
-            
-            nodeElements.classed('faded', d => d.id !== node.id && !connectedNodes.has(d.id));
+
+            // Auto fit-to-screen after simulation stabilizes
+            simulation.on('end', () => {
+                fitToScreen();
+            });
+        }
+
+        // === Fit to Screen ===
+        function fitToScreen() {
+            if (!filteredNodes.length) return;
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            filteredNodes.forEach(n => {
+                if (n.x < minX) minX = n.x;
+                if (n.y < minY) minY = n.y;
+                if (n.x > maxX) maxX = n.x;
+                if (n.y > maxY) maxY = n.y;
+            });
+            const padding = 80;
+            const dx = maxX - minX + padding * 2;
+            const dy = maxY - minY + padding * 2;
+            const scale = Math.min(width / dx, height / dy, 2);
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const transform = d3.zoomIdentity
+                .translate(width / 2, height / 2)
+                .scale(scale)
+                .translate(-cx, -cy);
+            svg.transition().duration(750).call(zoomBehavior.transform, transform);
+        }
+
+        // === Highlight ===
+        function highlightNode(node) {
+            const connected = new Set();
+            filteredLinks.forEach(link => {
+                const s = link.source.id || link.source, t = link.target.id || link.target;
+                if (s === node.id) connected.add(t);
+                else if (t === node.id) connected.add(s);
+            });
+            nodeElements.classed('faded', d => d.id !== node.id && !connected.has(d.id));
             nodeElements.classed('highlighted', d => d.id === node.id);
-            linkElements.classed('faded', d => !connectedLinks.has(d));
-            linkElements.classed('highlighted', d => connectedLinks.has(d));
+            // Redraw links with highlight
+            drawLinksHighlighted(node.id, connected);
         }
-        
+
+        function drawLinksHighlighted(nodeId, connected) {
+            ctx.clearRect(0, 0, width, height);
+            ctx.save();
+            ctx.translate(currentTransform.x, currentTransform.y);
+            ctx.scale(currentTransform.k, currentTransform.k);
+            for (let i = 0; i < filteredLinks.length; i++) {
+                const d = filteredLinks[i];
+                if (!d.source.x || !d.target.x) continue;
+                const s = d.source.id, t = d.target.id;
+                const isConnected = s === nodeId || t === nodeId;
+                ctx.beginPath();
+                ctx.moveTo(d.source.x, d.source.y);
+                ctx.lineTo(d.target.x, d.target.y);
+                ctx.strokeStyle = isConnected ? '#4a9eff' : '#444';
+                ctx.globalAlpha = isConnected ? 0.8 : 0.05;
+                ctx.lineWidth = isConnected ? 2 : 0.5;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
         function clearHighlight() {
-            nodeElements.classed('faded', false);
-            nodeElements.classed('highlighted', false);
-            linkElements.classed('faded', false);
-            linkElements.classed('highlighted', false);
+            if (nodeElements) {
+                nodeElements.classed('faded', false).classed('highlighted', false);
+            }
+            drawLinks();
         }
-        
+
+        // === Node Info ===
         async function showNodeInfo(node) {
             const safeId = escapeHtml(node.id);
-            const safeCategory = escapeHtml(node.category);
+            const safeCat = escapeHtml(node.category);
             const safeContent = escapeHtml(node.content);
             const safeTone = escapeHtml(node.emotional_tone || '');
-            const importance = escapeHtml(node.importance || 'normal');
-            
-            // Show preview immediately
+            const imp = escapeHtml(node.importance || 'normal');
+
             let meta = '';
-            if (importance !== 'normal') meta += `<div class="stat"><strong>Importance:</strong> ${importance}</div>`;
+            if (imp !== 'normal') meta += `<div class="stat"><strong>Importance:</strong> ${imp}</div>`;
             if (safeTone) meta += `<div class="stat"><strong>Tone:</strong> ${safeTone}</div>`;
             if (node.emotional_intensity > 0) meta += `<div class="stat"><strong>Intensity:</strong> ${node.emotional_intensity}/10</div>`;
-            
+
             document.getElementById('nodeInfo').innerHTML = `
-                <h3 style="margin-top: 20px; font-size: 14px;">Node #${safeId}</h3>
-                <div class="stat"><strong>Category:</strong> ${safeCategory}</div>
+                <h3 style="margin-top:20px;font-size:14px;">Node #${safeId}</h3>
+                <div class="stat"><strong>Category:</strong> ${safeCat}</div>
                 ${meta}
-                <div class="stat" style="line-height: 1.4; white-space: pre-wrap;">${safeContent}</div>
-                <div class="stat" style="color: #666; font-size: 11px;">Loading full content...</div>
-            `;
-            
-            // Fetch full content
+                <div class="stat" style="line-height:1.4;white-space:pre-wrap;">${safeContent}</div>
+                <div class="stat" style="color:#666;font-size:11px;">Loading full content...</div>`;
+
+            // Expand info panel if collapsed
+            document.getElementById('info').classList.remove('collapsed');
+
             const detail = await fetchNodeDetail(node.id);
             if (detail) {
-                const fullContent = escapeHtml(detail.content || '');
-                const timestamp = escapeHtml(detail.timestamp || '');
+                const full = escapeHtml(detail.content || '');
+                const ts = escapeHtml(detail.timestamp || '');
                 document.getElementById('nodeInfo').innerHTML = `
-                    <h3 style="margin-top: 20px; font-size: 14px;">Node #${safeId}</h3>
-                    <div class="stat"><strong>Category:</strong> ${safeCategory}</div>
+                    <h3 style="margin-top:20px;font-size:14px;">Node #${safeId}</h3>
+                    <div class="stat"><strong>Category:</strong> ${safeCat}</div>
                     ${meta}
-                    <div class="stat" style="font-size: 11px;"><strong>Created:</strong> ${timestamp}</div>
-                    <div class="stat" style="line-height: 1.4; white-space: pre-wrap; max-height: 400px; overflow-y: auto;">${fullContent}</div>
-                `;
+                    <div class="stat" style="font-size:11px;"><strong>Created:</strong> ${ts}</div>
+                    <div class="stat" style="line-height:1.4;white-space:pre-wrap;max-height:400px;overflow-y:auto;">${full}</div>`;
             }
         }
-        
-        function showLinkInfo(event, link) {
-            if (event) event.stopPropagation();
-            
-            const sourceId = escapeHtml(link.source.id || link.source);
-            const targetId = escapeHtml(link.target.id || link.target);
-            const weight = (link.weight || 0).toFixed(2);
-            const linkType = escapeHtml(link.type);
-            
-            console.log('showLinkInfo called:', { sourceId, targetId, weight, linkType });
-            
-            document.getElementById('nodeInfo').innerHTML = `
-                <h3 style="margin-top: 20px; font-size: 14px;">Link Info</h3>
-                <div class="stat"><strong>Type:</strong> ${linkType}</div>
-                <div class="stat"><strong>Weight:</strong> ${weight}</div>
-                <div class="stat"><strong>From:</strong> Node #${sourceId}</div>
-                <div class="stat"><strong>To:</strong> Node #${targetId}</div>
-                <div class="stat" style="margin-top: 10px; font-size: 10px; color: #888;">
-                    ${linkType === 'semantic' ? 'Semantic similarity between content' : 'Shared entities connection'}
-                </div>
-            `;
-        }
-        
+
+        // === Search ===
         function handleSearch() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            
-            // Input validation: max 100 chars, no special chars that could cause issues
-            if (query.length > 100) {
-                alert('Search query too long (max 100 characters)');
-                return;
-            }
-            
-            if (!query) {
-                clearHighlight();
-                return;
-            }
-            
+            const q = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (q.length > 100) { alert('Max 100 chars'); return; }
+            if (!q) { clearHighlight(); return; }
             const matches = new Set();
-            filteredNodes.forEach(node => {
-                if (node.content.toLowerCase().includes(query) || 
-                    node.category.toLowerCase().includes(query) ||
-                    node.id.includes(query)) {
-                    matches.add(node.id);
-                }
+            filteredNodes.forEach(n => {
+                if (n.content.toLowerCase().includes(q) || n.category.toLowerCase().includes(q) || n.id.includes(q))
+                    matches.add(n.id);
             });
-            
             nodeElements.classed('faded', d => !matches.has(d.id));
             nodeElements.classed('highlighted', d => matches.has(d.id));
         }
-        
-        function updateNodeSize(value) {
-            document.getElementById('nodeSizeValue').textContent = value;
-            if (nodeElements) {
-                nodeElements.attr('r', value);
-            }
+
+        // === Controls ===
+        function updateNodeSize(v) {
+            document.getElementById('nodeSizeValue').textContent = v;
+            if (nodeElements) nodeElements.attr('r', v);
         }
-        
         function toggleLabels() {
             const show = document.getElementById('showLabels').checked;
-            if (labelElements) {
-                labelElements.style('display', show ? 'block' : 'none');
-            }
+            if (labelElements) labelElements.style('display', show ? 'block' : 'none');
         }
-        
         function toggleLinkWeights() {
-            const show = document.getElementById('showLinkWeights').checked;
-            
-            // Show/hide weight legend
-            document.getElementById('weightLegend').style.display = show ? 'block' : 'none';
-            
-            // Re-render graph with new weight settings
-            if (filteredNodes.length > 0) {
-                renderGraph();
-            }
+            document.getElementById('weightLegend').style.display =
+                document.getElementById('showLinkWeights').checked ? 'block' : 'none';
+            drawLinks();
         }
-        
+
+        // === Timeline ===
         function updateTimeline(value) {
             if (!window.timelineMinId || !window.timelineMaxId) return;
-            
             const percent = parseInt(value);
-            
-            if (percent >= 100) {
-                // Show all
-                applyFilters();
-                updateTimelineInfo(100);
-                return;
-            }
-            
-            // Calculate cutoff ID based on percentage
-            const cutoffId = window.timelineMinId + 
+            if (percent >= 100) { applyFilters(); updateTimelineInfo(100); return; }
+            const cutoffId = window.timelineMinId +
                 (window.timelineMaxId - window.timelineMinId) * percent / 100;
-            
-            // Filter nodes by ID
-            const categoryFilter = document.getElementById('categoryFilter').value;
+            const catFilter = document.getElementById('categoryFilter').value;
             const showEntity = document.getElementById('showEntityLinks').checked;
             const showSemantic = document.getElementById('showSemanticLinks').checked;
-            
-            filteredNodes = allNodes.filter(node => {
-                if (categoryFilter && node.category !== categoryFilter) return false;
-                if (parseInt(node.id) > cutoffId) return false;
-                return true;
+            filteredNodes = allNodes.filter(n => {
+                if (catFilter && n.category !== catFilter) return false;
+                return parseInt(n.id) <= cutoffId;
             });
-            
-            // Filter links
             const nodeIds = new Set(filteredNodes.map(n => n.id));
             filteredLinks = allLinks.filter(link => {
                 if (!nodeIds.has(link.source.id || link.source)) return false;
@@ -1056,78 +740,41 @@
                 if (link.type === 'semantic' && !showSemantic) return false;
                 return true;
             });
-            
             updateTimelineInfo(percent);
             renderGraph();
         }
-        
-        function resetZoom() {
-            svg.transition().duration(750).call(
-                zoom.transform,
-                d3.zoomIdentity
-            );
-        }
-        
-        function centerGraph() {
-            if (simulation) {
-                simulation.alpha(1).restart();
-            }
-        }
-        
-        // Timeline Autoplay
-        let autoplayInterval = null;
-        let autoplayDirection = 1;
-        
+
+        // Autoplay
+        let autoplayInterval = null, autoplayDir = 1;
         function toggleAutoPlay() {
             const btn = document.getElementById('playPauseBtn');
-            
             if (autoplayInterval) {
-                // Stop
-                clearInterval(autoplayInterval);
-                autoplayInterval = null;
+                clearInterval(autoplayInterval); autoplayInterval = null;
                 btn.textContent = '▶ Play';
             } else {
-                // Start
                 btn.textContent = '⏸ Pause';
                 const slider = document.getElementById('timelineSlider');
-                
                 autoplayInterval = setInterval(() => {
-                    let currentValue = parseInt(slider.value);
-                    
-                    // Move slider
-                    currentValue += autoplayDirection * 2;
-                    
-                    // Reverse at ends
-                    if (currentValue >= 100) {
-                        currentValue = 100;
-                        autoplayDirection = -1;
-                    } else if (currentValue <= 0) {
-                        currentValue = 0;
-                        autoplayDirection = 1;
-                    }
-                    
-                    slider.value = currentValue;
-                    updateTimeline(currentValue);
-                }, 200); // Update every 200ms
+                    let v = parseInt(slider.value) + autoplayDir * 2;
+                    if (v >= 100) { v = 100; autoplayDir = -1; }
+                    else if (v <= 0) { v = 0; autoplayDir = 1; }
+                    slider.value = v;
+                    updateTimeline(v);
+                }, 200);
             }
         }
-        
-        // Drag functions
+
+        function centerGraph() { if (simulation) simulation.alpha(1).restart(); }
+
+        // === Drag ===
         function dragstarted(event, d) {
             if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
+            d.fx = d.x; d.fy = d.y;
         }
-        
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-        
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
         function dragended(event, d) {
             if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
+            d.fx = null; d.fy = null;
         }
     </script>
 </body>
