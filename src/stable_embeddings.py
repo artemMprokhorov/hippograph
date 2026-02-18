@@ -73,6 +73,11 @@ class StableEmbeddingModel:
         sum_mask = torch.clamp(mask_expanded.sum(dim=1), min=1e-9)
         return sum_embeddings / sum_mask
 
+    @property
+    def dimension(self) -> int:
+        """Return embedding dimension from model config."""
+        return self.model.config.hidden_size
+
 
 # Singleton for lazy loading
 _model = None

@@ -21,7 +21,9 @@ MAX_ELEMENTS = int(os.getenv("HNSW_MAX_ELEMENTS", "50000"))
 class ANNIndex:
     """hnswlib-based ANN index for fast similarity search with incremental updates."""
     
-    def __init__(self, dimension=384):
+    def __init__(self, dimension=None):
+        if dimension is None:
+            dimension = int(os.getenv("EMBEDDING_DIMENSION", "384"))
         self.dimension = dimension
         self.index = None
         self.node_ids = []
@@ -167,10 +169,18 @@ _ann_index = None
 
 
 def get_ann_index() -> ANNIndex:
-    """Get or create global ANN index instance."""
+    """Get or create global ANN index instance.
+    Auto-detects embedding dimension from the loaded model."""
     global _ann_index
     if _ann_index is None:
-        _ann_index = ANNIndex()
+        try:
+            from stable_embeddings import get_model
+            dim = get_model().dimension
+            print(f"📐 Auto-detected embedding dimension: {dim}")
+        except Exception:
+            dim = int(os.getenv("EMBEDDING_DIMENSION", "384"))
+            print(f"📐 Using configured embedding dimension: {dim}")
+        _ann_index = ANNIndex(dimension=dim)
     return _ann_index
 
 
