@@ -54,7 +54,7 @@ KNOWN_ENTITIES = {
     "java": ("Java", "tech"),
     "cpp": ("C++", "tech"),
     "c++": ("C++", "tech"),
-    "go": ("Go", "tech"),
+    "go lang": ("Go", "tech"),
     "golang": ("Go", "tech"),
     "ruby": ("Ruby", "tech"),
     "php": ("PHP", "tech"),
@@ -253,9 +253,17 @@ def extract_entities_spacy(text: str) -> List[Tuple[str, str, float]]:
         text_lower = text.lower()
         
         # First, add known entities (high confidence)
+        # Use word boundary matching for short keywords to avoid false positives
+        import re
         for key, (name, etype) in KNOWN_ENTITIES.items():
-            if key in text_lower and is_valid_entity(name):
-                entities.append((name, etype, 1.0))
+            if len(key) <= 3:
+                # Short keywords: require word boundaries
+                if re.search(r'\b' + re.escape(key) + r'\b', text_lower):
+                    if is_valid_entity(name):
+                        entities.append((name, etype, 1.0))
+            else:
+                if key in text_lower and is_valid_entity(name):
+                    entities.append((name, etype, 1.0))
         
         # Then, add spaCy detected entities
         for ent in doc.ents:
