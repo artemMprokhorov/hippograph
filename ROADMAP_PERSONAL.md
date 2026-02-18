@@ -115,6 +115,18 @@ brief/full modes, category filter. Config via ~/.hippograph.env. Aliases: `s`, `
 tracking (embedding, ANN, spreading, BM25, temporal, rerank). Zero-result
 detection. MCP tool `search_stats` for latency percentiles and quality metrics.
 
+### 7. Automated Regression Testing
+**Problem:** Every blend weight change, signal addition, or rebuild risks breaking retrieval.
+Currently verified by eye only.
+**Tasks:**
+- [ ] Script with 10+ known queries and expected top-5 notes
+- [ ] Run after each deploy, fail on P@5 drop
+- [ ] REST endpoint `/api/search-stats` for CLI access
+- [ ] Entity quality audit on new notes (last re-extraction at 587, now 617+)
+
+**Effort:** 3-4 hours
+**Priority:** MEDIUM — direct protection against degradation
+
 ---
 
 ## 🔬 RESEARCH — Phase 3 & Beyond
