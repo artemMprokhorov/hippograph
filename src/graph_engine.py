@@ -156,6 +156,23 @@ def add_note_with_links(content, category="general", importance="normal", force=
             emotional_context.append(emotional_reflection)
         full_text = f"{content}\n\n{'. '.join(emotional_context)}"
     
+    # Temporal context enrichment for embedding
+    # Resolved dates are added to embedding text so semantic search can match temporal queries
+    # The stored content remains clean — only the embedding vector carries temporal anchors
+    try:
+        from temporal_extractor import extract_temporal_expressions
+        from datetime import datetime as dt_class
+        temporal = extract_temporal_expressions(content, dt_class.now())
+        if temporal["t_event_start"]:
+            t_start = temporal["t_event_start"][:10]  # YYYY-MM-DD
+            t_end = temporal["t_event_end"][:10]
+            if t_start == t_end:
+                full_text = f"{full_text}\n\nTemporal context: {t_start}"
+            else:
+                full_text = f"{full_text}\n\nTemporal context: {t_start} to {t_end}"
+    except Exception:
+        pass  # Graceful degradation
+    
     embedding = model.encode(full_text)[0]
     
     # Get ANN index once (used for both duplicate check and semantic links)
