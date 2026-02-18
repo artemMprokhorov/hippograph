@@ -116,13 +116,10 @@ Query temporal decomposition strips signal words for cleaner semantic search.
 
 ---
 
-### 6. Search Quality Monitoring
-- [ ] Query logs (timestamp, query, results, latency)
-- [ ] Automated P@5 regression testing on deploy
-- [ ] Latency tracking (P50, P95, P99)
-
-**Effort:** 3-4 hours
-**Priority:** MEDIUM
+### 6. ~~Search Quality Monitoring~~ ✅ COMPLETED (Feb 18, 2026)
+**Result:** search_logger.py logs every search to SQLite. Phase-level latency
+tracking (embedding, ANN, spreading, BM25, temporal, rerank). Zero-result
+detection. MCP tool `search_stats` for latency percentiles and quality metrics.
 
 ---
 
