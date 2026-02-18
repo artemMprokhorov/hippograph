@@ -32,11 +32,9 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 16px;
-            cursor: pointer;
             user-select: none;
             border-bottom: 1px solid #333;
         }
-        .panel-header:hover { background: rgba(74, 158, 255, 0.1); }
         .panel-header h3 {
             margin: 0;
             color: #4a9eff;
@@ -46,12 +44,27 @@
             gap: 8px;
         }
         .panel-toggle {
-            color: #666;
-            font-size: 16px;
-            transition: transform 0.3s;
+            color: #aaa;
+            font-size: 18px;
+            font-weight: bold;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .panel-toggle:hover {
+            background: #4a9eff;
+            color: #fff;
+            border-color: #4a9eff;
         }
         .panel.collapsed .panel-body { display: none; }
-        .panel.collapsed .panel-toggle { transform: rotate(-90deg); }
         .panel.collapsed .panel-header { border-bottom: none; }
         .panel-body { padding: 16px; }
 
@@ -147,9 +160,9 @@
 
     <!-- Controls Panel (left) -->
     <div id="controls" class="panel">
-        <div class="panel-header" onclick="togglePanel('controls')">
+        <div class="panel-header">
             <h3>🧠 HippoGraph</h3>
-            <span class="panel-toggle">▼</span>
+            <span class="panel-toggle" onclick="togglePanel('controls')">−</span>
         </div>
         <div class="panel-body">
             <div id="configPanel" style="background: #2a1a1a; padding: 15px; border-radius: 8px; border: 2px solid #ff6b35; margin-bottom: 15px;">
@@ -194,9 +207,9 @@
 
     <!-- Stats Panel (right top) -->
     <div id="info" class="panel">
-        <div class="panel-header" onclick="togglePanel('info')">
+        <div class="panel-header">
             <h3>Graph Statistics</h3>
-            <span class="panel-toggle">▼</span>
+            <span class="panel-toggle" onclick="togglePanel('info')">−</span>
         </div>
         <div class="panel-body">
             <div id="stats"><div class="stat">Click "Load Full Graph" to begin</div></div>
@@ -206,9 +219,9 @@
 
     <!-- Categories Legend (right bottom) -->
     <div id="legend" class="panel">
-        <div class="panel-header" onclick="togglePanel('legend')">
+        <div class="panel-header">
             <h3 style="font-size: 13px;">Categories</h3>
-            <span class="panel-toggle">▼</span>
+            <span class="panel-toggle" onclick="togglePanel('legend')">−</span>
         </div>
         <div class="panel-body"><div id="legendContent"></div></div>
     </div>
@@ -222,9 +235,9 @@
 
     <!-- Timeline Panel (bottom center) -->
     <div id="timeline" class="panel">
-        <div class="panel-header" onclick="togglePanel('timeline')">
+        <div class="panel-header">
             <h3 style="font-size: 13px;">Timeline Filter</h3>
-            <span class="panel-toggle">▼</span>
+            <span class="panel-toggle" onclick="togglePanel('timeline')">−</span>
         </div>
         <div class="panel-body" style="padding: 10px 16px;">
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -259,7 +272,10 @@
 
         // === Panel Collapse ===
         function togglePanel(id) {
-            document.getElementById(id).classList.toggle('collapsed');
+            const panel = document.getElementById(id);
+            panel.classList.toggle('collapsed');
+            const btn = panel.querySelector('.panel-toggle');
+            btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
         }
 
         // === Configuration ===
