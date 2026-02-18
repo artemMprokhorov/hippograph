@@ -86,19 +86,16 @@ See ROADMAP_ENTERPRISE.md Tier 2.5.
 Current blend works well at personal scale (66.8% LOCOMO, 32/32 regression).
 RRF optimization relevant for enterprise scale. See ROADMAP_ENTERPRISE.md Tier 2.5.
 
-### 4. Sleep-Time Compute — Graph Consolidation
-**Idea:** Cron job for background graph maintenance without LLM:
-- [ ] Recalculate PageRank, detect new community clusters
-- [ ] Find weak links between clusters, suggest new connections
-- [ ] Detect orphan entities, stale edges (decay unused)
-- [ ] Consolidate similar notes (suggest merges by similarity threshold)
-- [ ] Pre-compute embeddings for new content patterns
-
-Pure graph math — NetworkX, zero LLM cost. Aligns with personal philosophy.
-LLM-powered version (Ollama reads notes, generates insights) → enterprise roadmap.
-
-**Effort:** 1 week
-**Priority:** MEDIUM — useful at 1000+ notes
+### 4. ~~Sleep-Time Compute~~ ✅ COMPLETED (Feb 18, 2026)
+**Result:** Zero-LLM graph maintenance daemon with 5-step cycle:
+- [x] Thematic consolidation (semantic similarity ≥0.75 clustering)
+- [x] Temporal chain detection (category-grouped sequences, 7-day gaps)
+- [x] PageRank + community detection recalculation
+- [x] Orphan detection (notes with ≤1 edges)
+- [x] Stale edge decay (weight *= 0.95 for edges >90 days)
+- [x] Near-duplicate scan (cosine ≥0.95, sliding window)
+- [x] MCP tool integration (dry_run=True for safe preview)
+Performance: 1.4s for 620 nodes, 58K edges. CLI + MCP accessible.
 
 ---
 

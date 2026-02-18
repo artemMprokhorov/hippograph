@@ -82,3 +82,12 @@ benchmark/locomo10.json
 benchmark/results/
 data/benchmark/
 tests/regression_results.json
+
+# Temporary/dev files
+src/*.clean_backup
+src/src/
+src/ann_index_old_production.py
+src/graph_cache_keep.py
+src/re_extract_entities.py
+benchmark/session_dia_map.json
+benchmarks/

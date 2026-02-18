@@ -189,7 +189,7 @@ def get_tools_list():
                 "properties": {
                     "dry_run": {
                         "type": "boolean",
-                        "default": false,
+"default": False,
                         "description": "If true, report only without making changes"
                     }
                 }

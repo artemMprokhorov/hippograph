@@ -44,6 +44,9 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Context window protection** — brief/full detail modes, token estimation, progressive loading
 - **Note versioning** — auto-save history, restore previous versions
 - **Graph visualization** — D3.js interactive viewer with REST API
+- **Sleep-time compute** — Zero-LLM graph maintenance: consolidation, PageRank, orphan detection, stale decay, duplicate scan (MCP tool)
+- **Bi-temporal model** — Event time extraction for temporal query answering
+- **LOCOMO benchmark** — 66.8% Recall@5 at zero LLM cost
 - Docker-ready deployment
 
 ---
@@ -285,6 +288,7 @@ hippograph/
 │   ├── graph_engine.py        # Spreading activation + blend scoring
 │   ├── bm25_index.py          # Okapi BM25 keyword search index
 │   ├── reranker.py            # Cross-encoder reranking pass
+│   ├── sleep_compute.py       # Zero-LLM graph maintenance daemon
 │   ├── entity_extractor.py    # spaCy NER + regex extraction
 │   ├── stable_embeddings.py   # Embedding model
 │   └── mcp_sse_handler.py     # MCP protocol
