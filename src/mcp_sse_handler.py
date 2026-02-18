@@ -180,6 +180,20 @@ def get_tools_list():
             "name": "search_stats",
             "description": "Get search quality monitoring stats: latency percentiles, zero-result queries, phase breakdown. Helps identify retrieval issues.",
             "inputSchema": {"type": "object", "properties": {}}
+        },
+        {
+            "name": "sleep_compute",
+            "description": "Run sleep-time graph maintenance: consolidation (thematic clusters + temporal chains), PageRank recalculation, orphan detection, stale edge decay, duplicate scan. Zero LLM cost. Use dry_run=true to preview without changes.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "dry_run": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "If true, report only without making changes"
+                    }
+                }
+            }
         }
     ]
 
@@ -229,6 +243,8 @@ def handle_tool_call(params):
         return tool_restore_note_version(args.get("note_id"), args.get("version_number"))
     elif tool_name == "search_stats":
         return tool_search_stats()
+    elif tool_name == "sleep_compute":
+        return tool_sleep_compute(args.get("dry_run", False))
     
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
@@ -582,3 +598,44 @@ def tool_search_stats():
         return {"content": [{"type": "text", "text": "\n".join(lines)}]}
     except Exception as e:
         return {"content": [{"type": "text", "text": f"❌ Search stats error: {e}"}]}
+
+
+def tool_sleep_compute(dry_run=False):
+    """Run sleep-time graph maintenance via MCP."""
+    try:
+        import sys
+        sys.path.insert(0, os.path.dirname(__file__))
+        from sleep_compute import run_all
+        
+        db_path = os.getenv("DB_PATH", "/app/data/memory.db")
+        results = run_all(db_path, dry_run=dry_run)
+        
+        lines = [f"{'🔍 DRY RUN' if dry_run else '✅ COMPLETED'} — Sleep-Time Compute"]
+        
+        c = results.get('consolidation', {})
+        if 'error' not in c:
+            lines.append(f"\n📎 Consolidation: {c.get('clusters', 0)} clusters, {c.get('chains', 0)} chains, {c.get('links_created', 0)} links created")
+        else:
+            lines.append(f"\n📎 Consolidation: ERROR — {c['error']}")
+        
+        p = results.get('pagerank', {})
+        if 'error' not in p:
+            lines.append(f"📊 Graph: {p.get('nodes', 0)} nodes, {p.get('edges', 0)} edges, {p.get('communities', 0)} communities, {p.get('isolated', 0)} isolated")
+        
+        o = results.get('orphans', {})
+        if 'error' not in o:
+            lines.append(f"🏝️ Orphans: {o.get('orphans', 0)} notes with ≤1 edges")
+        
+        d = results.get('decay', {})
+        if 'error' not in d:
+            lines.append(f"⏳ Decay: {d.get('stale_edges', 0)} stale edges {'(would decay)' if dry_run else 'decayed'}")
+        
+        dup = results.get('duplicates', {})
+        if 'error' not in dup:
+            lines.append(f"🔄 Duplicates: {dup.get('duplicates', 0)} near-duplicates found")
+            for a, b, sim in dup.get('pairs', [])[:5]:
+                lines.append(f"   #{a} ↔ #{b} ({sim:.3f})")
+        
+        return {"content": [{"type": "text", "text": "\n".join(lines)}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Sleep compute error: {e}"}]}
