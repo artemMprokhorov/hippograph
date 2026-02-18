@@ -2,7 +2,7 @@
 
 **Target:** Single user, 500-2,000 notes, personal knowledge management + research
 **Philosophy:** Keep all memories. Natural patterns over forced deletion. Zero LLM cost.
-**Last Updated:** February 12, 2026
+**Last Updated:** February 18, 2026
 
 ---
 
@@ -19,12 +19,16 @@
 - [x] Docker deployment on Mac Studio M3 Ultra
 
 ### Search & Retrieval
-- [x] Blend scoring (α=0.6 semantic + β=0.25 spreading + γ=0.15 BM25)
+- [x] Blend scoring (α×semantic + β×spreading + γ×BM25 + δ×temporal)
 - [x] BM25 keyword search (Okapi BM25, 8678 unique terms, zero-dependency)
+- [x] Cross-encoder reranking (ms-marco-MiniLM-L-6-v2, +21% precision)
+- [x] Bi-temporal model (t_event extraction, temporal overlap scoring)
+- [x] Query temporal decomposition (signal stripping + chronological ordering)
 - [x] Context window protection (brief/full modes)
 - [x] Category, time range, entity type filters
 - [x] Duplicate detection (similarity threshold)
 - [x] Hub node penalty (entity count-based)
+- [x] LOCOMO benchmark: **66.8% Recall@5** (zero LLM cost)
 - [x] P@5 = 82%, Top-1 = 100% on internal benchmark
 
 ### Memory Features
@@ -46,37 +50,40 @@
 - [x] Phase 4.5: Entity re-extraction (587 notes)
 - [x] Phase 5: Category normalization (93→68 categories)
 
-**Current State:** 588 nodes, 48,338 edges, 1,721 entities, 68 categories, 8,678 BM25 terms
+**Current State:** 614 nodes, ~47K edges, ~1,700 entities, 68 categories, 8,678+ BM25 terms
 
 ---
 
 ## 🔥 HIGH PRIORITY — Next Development Cycle
 
 ### 1. ~~BM25 Hybrid Search~~ ✅ COMPLETED (Feb 12, 2026)
-**Source:** Zep/Graphiti competitive analysis
-**Result:** Zero-dependency Okapi BM25 implementation. 8678 unique terms indexed in 10ms at startup. Three-signal blend scoring: `final = α×semantic + β×spreading + γ×BM25` where β = 1-α-γ. Backward compatible (γ=0 by default). Incremental updates for new notes. Production deployed with γ=0.15.
-**Files:** `src/bm25_index.py`, updated `graph_engine.py` blend scoring
-
----
+**Result:** Zero-dependency Okapi BM25. 8678 terms. Three-signal blend → four-signal with δ temporal.
 
 ### 2. ~~Reranking Pass~~ ✅ COMPLETED (Feb 12, 2026)
-**Source:** Zep uses BGE-m3 reranker after initial retrieval
-**Result:** Cross-encoder reranking with ms-marco-MiniLM-L-6-v2. Reranks top-20 blend candidates, blends reranker score with original score (RERANK_WEIGHT=0.3). Lazy model loading, backward compatible (disabled by default). Adds ~100ms latency when enabled.
-**Files:** `src/reranker.py`, updated `graph_engine.py` Step 6.5
+**Result:** Cross-encoder ms-marco-MiniLM-L-6-v2. +21.3% on LOCOMO. ~100ms latency.
+
+### 3. ~~LOCOMO Benchmark~~ ✅ COMPLETED (Feb 12-18, 2026)
+**Result:** Full adapter deployed. Optimization journey: 32.6% → 44.2% → 65.5% → **66.8% Recall@5**.
+Hybrid granularity + reranking + bi-temporal + query decomposition. Zero LLM cost.
+See [BENCHMARK.md](./BENCHMARK.md) for full results.
+
+### 4. ~~Bi-Temporal Model~~ ✅ COMPLETED (Feb 18, 2026)
+**Result:** t_event_start/end extraction via spaCy DATE + regex resolver. δ signal in blend formula.
+Query temporal decomposition strips signal words for cleaner semantic search.
 
 ---
 
-### 3. LOCOMO Benchmark Adapter
-**Source:** Competitive analysis — all competitors report on standard benchmarks
-**Problem:** Our P@5=82% is internal-only. Can't compare directly with Mem0 (LOCOMO J=66.9%), Zep (DMR=94.8%), Letta (LoCoMo=74.0%).
-**Solution:** Adapt our search to LOCOMO benchmark format:
-- [ ] Load LOCOMO dataset (multi-session conversation pairs)
-- [ ] Map LOCOMO queries to our search_with_activation API
-- [ ] Report J-score, F1, accuracy in standardized format
-- [ ] Compare with published results
+### 5. LLM Generation Layer (Ollama)
+**Source:** End-to-end F1 comparison with Mem0/Letta requires answer generation
+**Problem:** Our 66.8% is retrieval-only Recall@5. Competitors report LLM-judged answer accuracy.
+**Solution:** Add Ollama sidecar for answer generation on retrieved context:
+- [ ] Ollama container in docker-compose
+- [ ] Retrieval → context assembly → LLM generation → F1 scoring
+- [ ] Compare end-to-end with Mem0 (J=66.9%), Letta (74.0%)
+- [ ] Temporal reasoning via LLM (current bottleneck: 36.5%)
 
-**Effort:** 6-8 hours (dataset integration + evaluation script)
-**Priority:** HIGH — required for any publication or credible comparison
+**Effort:** 1-2 weeks
+**Priority:** HIGH — needed for publication and fair comparison
 
 ---
 
@@ -128,10 +135,19 @@
 - [ ] Sleep-time compute integration
 
 ### Academic Publication
-- [ ] LOCOMO benchmark results (see #3 above)
+- [x] LOCOMO benchmark results — 66.8% Recall@5
+- [ ] End-to-end F1 via Ollama generation layer
 - [ ] Methodology paper: spreading activation for AI memory
+- [ ] Position paper: "Why context length is wrong metric for AI memory"
 - [ ] Comparative analysis: zero-LLM-cost vs LLM-dependent approaches
 - [ ] Identity continuity experiments documentation
+
+### Temporal Reasoning (Research Insight from Feb 18)
+Temporal queries (36.5% on LOCOMO) require **LLM reasoning**, not better retrieval.
+LOCOMO temporal Qs ask "what happened first?", "before or after?" — event ordering
+that needs reading timestamps and reasoning, not similarity matching.
+TReMu (Feb 2025) achieves 77.67% temporal via neuro-symbolic code generation.
+Our path: Ollama + retrieved context + temporal chain-of-thought.
 
 ### Real-Time Graph Visualization
 - [ ] Live graph updates via WebSocket
@@ -155,12 +171,13 @@ Moved to ROADMAP_ENTERPRISE.md:
 
 ---
 
-## 📊 Competitive Position (Feb 2026)
+## 📊 Competitive Position (Feb 18, 2026)
 
 | Metric | HippoGraph | Mem0 | Zep | Letta | doobidoo |
 |--------|-----------|------|-----|-------|----------|
 | LLM Cost | **$0** | ~$0.01/note | ~$0.02/note | ~$0.05/note | $0 |
-| Retrieval | Spread+Semantic+BM25 | Vector+Graph | BM25+Semantic+Graph | Agent-driven | Vector-only |
+| Retrieval | Spread+Sem+BM25+Temporal | Vector+Graph | BM25+Sem+Graph | Agent-driven | Vector-only |
+| LOCOMO | **66.8% R@5** | 66.9% J-score | N/A | 74.0% acc | N/A |
 | Latency | 200-500ms | P95=1.44s | P95=300ms | varies | 5ms (cached) |
 | Graph | ✅ Spreading | ✅ Mem0ᵍ | ✅ Temporal KG | ❌ | ❌ |
 | Emotional | ✅ | ❌ | ❌ | ❌ | ✅ |

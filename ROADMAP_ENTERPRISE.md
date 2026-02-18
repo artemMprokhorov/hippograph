@@ -2,7 +2,7 @@
 
 **Target:** Multi-user deployment, 10K-100K+ notes, production workloads
 **Philosophy:** Performance at scale. Proven techniques from competitors. LLM-optional.
-**Last Updated:** February 12, 2026
+**Last Updated:** February 18, 2026
 
 > ⚠️ This roadmap is aspirational. Current focus is personal/research use.
 > Enterprise features are documented for completeness based on competitive analysis.
@@ -51,27 +51,27 @@
 
 ## Tier 2: Search & Retrieval at Scale
 
-### 4. Bi-Temporal Model
+### 4. ~~Bi-Temporal Model~~ ✅ IMPLEMENTED (Personal, Feb 18, 2026)
 **Source:** Zep/Graphiti tracks "when fact was true" vs "when ingested"
-**Tasks:**
-- [ ] Add t_valid, t_invalid columns to edges
+**Status:** Implemented in personal roadmap. t_event_start/end columns, temporal extractor,
+δ signal in blend scoring, query temporal decomposition. Ready for enterprise extension:
+- [ ] Add t_valid, t_invalid columns to edges (fact validity tracking)
 - [ ] Temporal queries: "what was true on date X?"
 - [ ] Fact invalidation without deletion
 - [ ] Historical graph reconstruction
 
-**Effort:** 1-2 weeks
+**Remaining effort:** 1 week (edge-level temporal, fact invalidation)
 
 ---
 
-### 5. Advanced Reranking Pipeline
+### 5. ~~Advanced Reranking Pipeline~~ ✅ PARTIALLY IMPLEMENTED (Personal, Feb 12, 2026)
 **Source:** Zep uses BGE-m3 for reranking after retrieval
-**Tasks:**
-- [ ] Cross-encoder reranker (BGE-m3 or ms-marco)
+**Status:** Cross-encoder reranking deployed (ms-marco-MiniLM-L-6-v2). Remaining for enterprise:
 - [ ] Multi-factor scoring: graph distance + recency + importance + entity overlap
 - [ ] Learning-to-rank from user feedback
 - [ ] Result diversity (avoid clustering)
 
-**Effort:** 1 week
+**Remaining effort:** 1 week
 
 ---
 
@@ -157,10 +157,13 @@
 | Feature | Status | Competitor Reference |
 |---------|--------|---------------------|
 | Multi-tenant | ❌ Missing | Mem0, Zep, Letta |
-| BM25 hybrid | ❌ Missing (Personal roadmap #1) | Zep |
-| Standard benchmarks | ❌ Missing (Personal roadmap #3) | All |
+| BM25 hybrid | ✅ Done (Personal) | Zep |
+| Cross-encoder reranking | ✅ Done (Personal) | Zep |
+| Bi-temporal model | ✅ Partial (node-level done, edge-level TODO) | Zep |
+| Standard benchmarks | ✅ Done — 66.8% LOCOMO Recall@5 | All |
 | Cloud deployment | ❌ Missing | Mem0 Cloud, Zep Cloud |
 | LLM entity extraction | ❌ Optional | Mem0, Zep |
 | Framework integrations | ❌ MCP only | All competitors |
+| End-to-end QA | ❌ Retrieval only | Mem0, Letta |
 
 **Our enterprise differentiator:** Zero-LLM-cost base + optional LLM enhancement. Nobody else offers this hybrid approach.
