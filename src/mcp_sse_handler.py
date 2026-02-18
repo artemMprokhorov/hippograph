@@ -175,6 +175,11 @@ def get_tools_list():
                 },
                 "required": ["note_id", "version_number"]
             }
+        },
+        {
+            "name": "search_stats",
+            "description": "Get search quality monitoring stats: latency percentiles, zero-result queries, phase breakdown. Helps identify retrieval issues.",
+            "inputSchema": {"type": "object", "properties": {}}
         }
     ]
 
@@ -222,6 +227,8 @@ def handle_tool_call(params):
         return tool_get_note_history(args.get("note_id"), args.get("limit", 5))
     elif tool_name == "restore_note_version":
         return tool_restore_note_version(args.get("note_id"), args.get("version_number"))
+    elif tool_name == "search_stats":
+        return tool_search_stats()
     
     return {"error": {"code": -32602, "message": f"Unknown tool: {tool_name}"}}
 
@@ -528,3 +535,50 @@ def tool_restore_note_version(note_id: int, version_number: int):
         return {"content": [{"type": "text", "text": f"❌ Version {version_number} not found for note #{note_id}, or restore failed"}]}
     
     return {"content": [{"type": "text", "text": f"✅ Note #{note_id} restored to version {version_number}. Current state saved as new version before restore."}]}
+
+
+def tool_search_stats():
+    """Get search quality monitoring statistics."""
+    try:
+        from search_logger import get_search_stats
+        stats = get_search_stats()
+        
+        lines = ["📊 Search Quality Monitor\n"]
+        
+        lines.append(f"Total searches today: {stats.get('total_searches_today', 0)}")
+        lines.append(f"Total all-time: {stats.get('total_searches_all_time', 0)}")
+        lines.append(f"Zero-result searches today: {stats.get('zero_results_today', 0)}")
+        
+        if stats.get("latency_p50"):
+            lines.append(f"\n⏱️ Latency:")
+            lines.append(f"  P50: {stats['latency_p50']}ms")
+            lines.append(f"  P95: {stats['latency_p95']}ms")
+            lines.append(f"  P99: {stats['latency_p99']}ms")
+            lines.append(f"  Max: {stats['latency_max']}ms")
+        
+        if stats.get("avg_top1_score"):
+            lines.append(f"\n🎯 Quality:")
+            lines.append(f"  Avg top-1 score: {stats['avg_top1_score']}")
+            lines.append(f"  Avg results/search: {stats['avg_results_count']}")
+        
+        if stats.get("avg_phase_ms"):
+            p = stats["avg_phase_ms"]
+            lines.append(f"\n🔧 Avg phase breakdown:")
+            lines.append(f"  Embedding: {p['embedding']}ms")
+            lines.append(f"  ANN: {p['ann']}ms")
+            lines.append(f"  Spreading: {p['spreading']}ms")
+            lines.append(f"  BM25: {p['bm25']}ms")
+            lines.append(f"  Temporal: {p['temporal']}ms")
+            lines.append(f"  Rerank: {p['rerank']}ms")
+        
+        if stats.get("recent_zero_results"):
+            lines.append(f"\n⚠️ Recent zero-result queries:")
+            for zr in stats["recent_zero_results"][:5]:
+                lines.append(f"  - \"{zr['query']}\" ({zr['timestamp'][:16]})")
+        
+        if stats.get("total_searches_all_time", 0) == 0:
+            lines.append("\nNo searches logged yet. Stats will populate after searches are made.")
+        
+        return {"content": [{"type": "text", "text": "\n".join(lines)}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Search stats error: {e}"}]}

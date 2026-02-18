@@ -279,6 +279,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     """
     model = get_model()
     
+    # Initialize search logger
+    try:
+        from search_logger import SearchLogger
+        slog = SearchLogger()
+        slog.start()
+    except Exception:
+        slog = None
+    
     # Query temporal decomposition: strip temporal signal words for cleaner semantic search
     query_is_temporal = False
     temporal_direction = None
@@ -292,6 +300,7 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         pass
     
     query_emb = model.encode(search_query)[0]
+    if slog: slog.mark("embedding")
     
     all_nodes = get_all_nodes()
     
@@ -318,6 +327,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                 activations[node["id"]] = sim
                 semantic_sims[node["id"]] = sim
         print(f"⚠️  Linear search: {len(activations)} initial candidates (ANN disabled)")
+    
+    if slog: slog.mark("ann")
     
     # Step 2: Spreading activation with normalization and damping
     for iteration in range(iterations):
@@ -355,6 +366,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         # Debug output
         if activations:
             print(f"  Iteration {iteration+1}: {len(activations)} nodes, max={max(activations.values()):.4f}, sum={sum(activations.values()):.4f}")
+
+    if slog: slog.mark("spreading")
 
     
     # Step 3: Apply temporal decay and importance scoring
@@ -413,6 +426,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                 bm25_scores = {nid: s / max_bm25 for nid, s in bm25_raw.items()}
         print(f"🔍 BM25: {len(bm25_scores)} docs matched")
     
+    if slog: slog.mark("bm25")
+    
     # Get temporal scores if delta > 0 OR query is temporal
     temporal_scores = {}
     if delta > 0 or query_is_temporal:
@@ -467,6 +482,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         effective_delta = 0.15  # Auto-enable temporal signal for temporal queries
         beta = max(0.0, 1.0 - alpha - gamma - effective_delta)
     
+    if slog: slog.mark("temporal")
+    
     # Collect all node IDs that appear in any signal
     all_node_ids = set(activations.keys()) | set(bm25_scores.keys()) | set(temporal_scores.keys())
     
@@ -510,6 +527,8 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
             reranked = reranker.rerank(query, rerank_candidates, top_k=RERANK_TOP_N)
             for node_id, new_score in reranked:
                 blended[node_id] = new_score
+    
+    if slog: slog.mark("rerank")
     
     # Step 7: Sort and return top results
     sorted_nodes = sorted(blended.items(), key=lambda x: x[1], reverse=True)
@@ -573,6 +592,28 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     
     # Include total activated count for context awareness
     total_activated = len(blended)
+    
+    # Log search metrics
+    if slog:
+        slog.mark("filters")
+        slog.finish(query, results, total_activated, 
+            params={
+                "query_cleaned": search_query if search_query != query else None,
+                "is_temporal": query_is_temporal,
+                "temporal_direction": temporal_direction,
+                "limit": limit,
+                "category_filter": category_filter,
+                "time_after": time_after,
+                "time_before": time_before,
+                "entity_type_filter": entity_type_filter,
+            },
+            signals={
+                "alpha": alpha, "beta": beta, "gamma": gamma, "delta": effective_delta,
+                "bm25_matches": len(bm25_scores),
+                "temporal_matches": len(temporal_scores),
+                "rerank_enabled": RERANK_ENABLED,
+            })
+    
     return results, total_activated
 
 
