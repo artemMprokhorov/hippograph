@@ -236,10 +236,11 @@ ENTITY_EXTRACTOR=spacy  # Options: regex, spacy
 ACTIVATION_ITERATIONS=3
 ACTIVATION_DECAY=0.7
 
-# Blend scoring (three-signal balance)
+# Blend scoring (four-signal balance)
 # BLEND_ALPHA=0.6  # Semantic similarity weight (default 0.6)
 # BLEND_GAMMA=0.15 # BM25 keyword weight (default 0.0 = disabled)
-# β = 1 - α - γ    # Spreading activation gets remainder (0.25 with defaults above)
+# BLEND_DELTA=0.1  # Temporal weight (default 0.0, auto-enabled for temporal queries)
+# β = 1 - α - γ - δ  # Spreading activation gets remainder
 
 # Temporal decay (days)
 HALF_LIFE_DAYS=30

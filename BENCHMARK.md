@@ -6,7 +6,7 @@
 
 HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-research/locomo) — a standardized dataset for testing long-conversation memory systems. LOCOMO contains 10 multi-session conversations (272 sessions, 5,882 dialogue turns) with 1,986 QA pairs across multiple reasoning categories.
 
-**Key result:** HippoGraph achieves **65.5% Recall@5** on retrieval with **zero LLM infrastructure cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, BM25 keyword search, and cross-encoder reranking.
+**Key result:** HippoGraph achieves **66.8% Recall@5** on retrieval with **zero LLM infrastructure cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, BM25 keyword search, cross-encoder reranking, bi-temporal model, and query temporal decomposition.
 
 ---
 
@@ -21,14 +21,26 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 | LLM calls | **0** (zero — fully local processing) |
 | Embedding model | paraphrase-multilingual-MiniLM-L12-v2 |
 | Entity extraction | spaCy (en\_core\_web\_sm + xx\_ent\_wiki\_sm) |
-| Retrieval pipeline | Semantic + Spreading Activation + BM25 + Cross-Encoder Reranking |
-| Blend weights | α=0.6 (semantic), β=0.25 (spreading activation), γ=0.15 (BM25) |
+| Retrieval pipeline | Semantic + Spreading Activation + BM25 + Temporal + Cross-Encoder Reranking |
+| Blend weights | α=0.6 (semantic), β=0.10 (spreading), γ=0.15 (BM25), δ=0.15 (temporal, auto for temporal queries) |
 | Reranking | cross-encoder/ms-marco-MiniLM-L-6-v2, weight=0.3, top-N=20 |
 | Granularity | Hybrid (3-turn chunks, ~1,960 notes) |
+| Query decomposition | Temporal signal stripping + order scoring |
+| Bi-temporal | t_event extraction via spaCy DATE + regex resolver |
 
 ---
 
-### Results: Hybrid Granularity + Reranking (Best)
+### Results: Hybrid + Reranking + Bi-temporal + Query Decomposition (Best)
+
+| Category | Queries | Hits | Recall@5 | MRR |
+|----------|---------|------|----------|-----|
+| **Overall** | **1,540** | **1,028** | **66.8%** | **0.549** |
+| Single-hop | 282 | 177 | 62.8% | 0.470 |
+| Multi-hop | 321 | 216 | **67.3%** | 0.555 |
+| Temporal | 96 | 35 | 36.5% | 0.269 |
+| Open-domain | 841 | 600 | **71.3%** | 0.606 |
+
+### Results: Hybrid + Reranking (Previous Best)
 
 | Category | Queries | Hits | Recall@5 | MRR |
 |----------|---------|------|----------|-----|
@@ -66,21 +78,26 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 |--------------|----------|-----|-------|
 | Session-level (baseline) | 32.6% | 0.223 | 272 notes, broad context |
 | Turn-level | 44.2% | 0.304 | 5,870 notes, +11.6% |
-| **Hybrid + Reranking** | **65.5%** | **0.535** | **~1,960 notes, +21.3% over turn** |
+| Hybrid + Reranking | 65.5% | 0.535 | ~1,960 notes, +21.3% over turn |
+| + Bi-temporal δ signal | 66.0% | 0.546 | Temporal overlap scoring |
+| + Embedding enrichment ❌ | 65.6% | 0.545 | Reverted — polluted non-temporal embeddings |
+| **+ Query decomposition** | **66.8%** | **0.549** | **Temporal signal stripping + order scoring** |
 
-| Category | Session → Turn → Hybrid+Rerank |
-|----------|-------------------------------|
-| Overall | 32.6% → 44.2% → **65.5%** |
-| Multi-hop | 27.4% → 52.6% → **64.2%** |
-| Single-hop | 50.4% → 37.9% → **62.1%** |
-| Open-domain | 28.3% → 45.5% → **70.5%** |
-| Temporal | 35.4% → 22.9% → **35.4%** |
+| Category | Session → Turn → Hybrid+Rerank → **Best** |
+|----------|-------------------------------------------|
+| Overall | 32.6% → 44.2% → 65.5% → **66.8%** |
+| Multi-hop | 27.4% → 52.6% → 64.2% → **67.3%** |
+| Single-hop | 50.4% → 37.9% → 62.1% → **62.8%** |
+| Open-domain | 28.3% → 45.5% → 70.5% → **71.3%** |
+| Temporal | 35.4% → 22.9% → 35.4% → **36.5%** |
 
 **Key findings:**
 - Hybrid granularity (3-turn chunks) captures the best of both session and turn-level approaches
 - Cross-encoder reranking adds +21.3% over turn-level baseline
-- Spreading activation validated: multi-hop improved from 27.4% (session) to 64.2% (hybrid+rerank)
-- Temporal queries remain the hardest category — future work on temporal reasoning needed
+- Spreading activation validated: multi-hop improved from 27.4% (session) to 67.3% (best)
+- Query temporal decomposition: stripping temporal signal words improves semantic matching (+1.3%)
+- Embedding enrichment with dates hurts non-temporal queries — reverted
+- Temporal queries remain the hardest category — requires LLM reasoning layer, not retrieval improvements
 
 ---
 
@@ -92,7 +109,7 @@ Our Recall@5 measures whether the correct evidence document appears in the top-5
 
 | System | Metric | Score | What It Measures |
 |--------|--------|-------|-----------------|
-| **HippoGraph** | **Recall@5** | **65.5%** | Retrieved correct document in top-5 |
+| **HippoGraph** | **Recall@5** | **66.8%** | Retrieved correct document in top-5 |
 | Mem0 | LOCOMO J-score | 66.9% | LLM-judged answer accuracy |
 | Letta (MemGPT) | LoCoMo accuracy | 74.0% | LLM-generated answer accuracy |
 | GPT-4 (no memory) | F1 | 32.1% | Answer text overlap with ground truth |
@@ -107,13 +124,17 @@ However, one comparison is meaningful: **HippoGraph achieves its results at $0 L
 ### Retrieval Pipeline
 
 ```
-Query → Embedding → ANN Search (HNSW)
+Query → Temporal Decomposition (strip signal words, detect direction)
+                         ↓
+              Embedding → ANN Search (HNSW)
                          ↓
               Spreading Activation (3 iterations, decay=0.7)
                          ↓
               BM25 Keyword Search (Okapi BM25, k1=1.5, b=0.75)
                          ↓
-              Blend Scoring: α×semantic + β×spreading + γ×BM25
+              Temporal Scoring (date overlap + chronological ordering)
+                         ↓
+              Blend: α×semantic + β×spreading + γ×BM25 + δ×temporal
                          ↓
               Cross-Encoder Reranking (ms-marco-MiniLM-L-6-v2)
                          ↓
@@ -126,10 +147,11 @@ Query → Embedding → ANN Search (HNSW)
 
 - [x] ~~Hybrid granularity (3-turn chunks)~~ — **+21.3% improvement**
 - [x] ~~Cross-encoder reranking~~ — **included in best result**
-- [ ] Tune blend weights (α, β, γ) per category
-- [ ] Add LLM generation layer for end-to-end F1 comparison with Mem0/Letta
+- [x] ~~Bi-temporal model~~ — **t_event extraction, δ signal in blend**
+- [x] ~~Query temporal decomposition~~ — **+1.3% via signal stripping**
+- [ ] Add LLM generation layer (Ollama) for end-to-end F1 comparison with Mem0/Letta
+- [ ] Tune blend weights (α, β, γ, δ) per category
 - [ ] Evaluate on LongMemEval and DMR benchmarks
-- [ ] Improve temporal reasoning (currently 35.4%)
 
 ---
 
