@@ -156,23 +156,6 @@ def add_note_with_links(content, category="general", importance="normal", force=
             emotional_context.append(emotional_reflection)
         full_text = f"{content}\n\n{'. '.join(emotional_context)}"
     
-    # Temporal context enrichment for embedding
-    # Resolved dates are added to embedding text so semantic search can match temporal queries
-    # The stored content remains clean — only the embedding vector carries temporal anchors
-    try:
-        from temporal_extractor import extract_temporal_expressions
-        from datetime import datetime as dt_class
-        temporal = extract_temporal_expressions(content, dt_class.now())
-        if temporal["t_event_start"]:
-            t_start = temporal["t_event_start"][:10]  # YYYY-MM-DD
-            t_end = temporal["t_event_end"][:10]
-            if t_start == t_end:
-                full_text = f"{full_text}\n\nTemporal context: {t_start}"
-            else:
-                full_text = f"{full_text}\n\nTemporal context: {t_start} to {t_end}"
-    except Exception:
-        pass  # Graceful degradation
-    
     embedding = model.encode(full_text)[0]
     
     # Get ANN index once (used for both duplicate check and semantic links)
@@ -295,7 +278,20 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
     - Optionally filtered by category, time range, and/or entity type
     """
     model = get_model()
-    query_emb = model.encode(query)[0]
+    
+    # Query temporal decomposition: strip temporal signal words for cleaner semantic search
+    query_is_temporal = False
+    temporal_direction = None
+    search_query = query
+    try:
+        from query_decomposer import decompose_temporal_query
+        search_query, query_is_temporal, temporal_direction = decompose_temporal_query(query)
+        if query_is_temporal:
+            print(f"🕐 Temporal query detected (direction={temporal_direction}): '{query}' → content='{search_query}'")
+    except Exception:
+        pass
+    
+    query_emb = model.encode(search_query)[0]
     
     all_nodes = get_all_nodes()
     
@@ -417,14 +413,14 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                 bm25_scores = {nid: s / max_bm25 for nid, s in bm25_raw.items()}
         print(f"🔍 BM25: {len(bm25_scores)} docs matched")
     
-    # Get temporal scores if delta > 0
+    # Get temporal scores if delta > 0 OR query is temporal
     temporal_scores = {}
-    if delta > 0:
+    if delta > 0 or query_is_temporal:
         try:
             from temporal_extractor import extract_temporal_expressions, compute_temporal_overlap
+            # Date-range overlap scoring (existing)
             query_temporal = extract_temporal_expressions(query)
             if query_temporal["t_event_start"] and query_temporal["t_event_end"]:
-                # Score all nodes that have temporal data
                 with get_connection() as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT id, t_event_start, t_event_end FROM nodes WHERE t_event_start IS NOT NULL")
@@ -434,9 +430,42 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
                             query_temporal["t_event_start"], query_temporal["t_event_end"], ns, ne)
                         if overlap > 0:
                             temporal_scores[nid] = overlap
-                print(f"🕐 Temporal: {len(temporal_scores)} notes matched query time range")
+                print(f"🕐 Temporal overlap: {len(temporal_scores)} notes matched")
+            
+            # Temporal ordering score for temporal queries (before/after/when)
+            if query_is_temporal and temporal_direction:
+                from query_decomposer import compute_temporal_order_score
+                # Get timestamps of all candidate nodes
+                candidate_ids = set(activations.keys()) | set(bm25_scores.keys())
+                if candidate_ids:
+                    node_timestamps = {}
+                    with get_connection() as conn:
+                        cursor = conn.cursor()
+                        placeholders = ','.join('?' * len(candidate_ids))
+                        cursor.execute(f"SELECT id, timestamp, t_event_start FROM nodes WHERE id IN ({placeholders})", 
+                                      list(candidate_ids))
+                        for row in cursor.fetchall():
+                            nid = row[0]
+                            # Prefer t_event_start over ingestion timestamp
+                            ts = row[2] if row[2] else row[1]
+                            if ts:
+                                node_timestamps[nid] = ts
+                    
+                    all_ts = list(node_timestamps.values())
+                    for nid, ts in node_timestamps.items():
+                        order_score = compute_temporal_order_score(ts, temporal_direction, all_ts)
+                        # Combine: if overlap exists, blend; otherwise use order score
+                        existing = temporal_scores.get(nid, 0.0)
+                        temporal_scores[nid] = max(existing, order_score)
+                    print(f"🕐 Temporal order ({temporal_direction}): {len(node_timestamps)} notes scored")
         except Exception as e:
             print(f"⚠️ Temporal scoring failed: {e}")
+    
+    # For temporal queries, ensure delta has weight even if env is 0
+    effective_delta = delta
+    if query_is_temporal and delta == 0:
+        effective_delta = 0.15  # Auto-enable temporal signal for temporal queries
+        beta = max(0.0, 1.0 - alpha - gamma - effective_delta)
     
     # Collect all node IDs that appear in any signal
     all_node_ids = set(activations.keys()) | set(bm25_scores.keys()) | set(temporal_scores.keys())
@@ -446,9 +475,9 @@ def search_with_activation(query, limit=5, iterations=ACTIVATION_ITERATIONS, dec
         spread = spread_normalized.get(node_id, 0.0)
         bm25 = bm25_scores.get(node_id, 0.0)
         temp = temporal_scores.get(node_id, 0.0)
-        blended[node_id] = alpha * sem + beta * spread + gamma * bm25 + delta * temp
+        blended[node_id] = alpha * sem + beta * spread + gamma * bm25 + effective_delta * temp
     
-    print(f"🔀 Blend scoring (α={alpha}, β={beta}, γ={gamma}, δ={delta}): {len(blended)} nodes scored")
+    print(f"🔀 Blend scoring (α={alpha}, β={beta}, γ={gamma}, δ={effective_delta}): {len(blended)} nodes scored")
     
     # Step 5: Apply entity-count penalty to suppress hub notes
     # Notes with many entities are generic (session summaries, milestones)
