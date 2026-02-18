@@ -86,18 +86,19 @@ See ROADMAP_ENTERPRISE.md Tier 2.5.
 Current blend works well at personal scale (66.8% LOCOMO, 32/32 regression).
 RRF optimization relevant for enterprise scale. See ROADMAP_ENTERPRISE.md Tier 2.5.
 
-### 4. Sleep-Time Compute (Phase 3 Foundation)
-**Source:** Letta's innovation — memory refinement during idle
-**Idea:** When system is idle, run background processes:
-- [ ] Consolidate similar notes (suggest merges)
-- [ ] Detect stale connections (decay unused edges)
-- [ ] Refresh community detection periodically
+### 4. Sleep-Time Compute — Graph Consolidation
+**Idea:** Cron job for background graph maintenance without LLM:
+- [ ] Recalculate PageRank, detect new community clusters
+- [ ] Find weak links between clusters, suggest new connections
+- [ ] Detect orphan entities, stale edges (decay unused)
+- [ ] Consolidate similar notes (suggest merges by similarity threshold)
 - [ ] Pre-compute embeddings for new content patterns
 
-**Relevance:** Directly feeds into Phase 3 multi-agent architecture. The "sleeping" agent could be our second agent with TrueRNG entropy source.
+Pure graph math — NetworkX, zero LLM cost. Aligns with personal philosophy.
+LLM-powered version (Ollama reads notes, generates insights) → enterprise roadmap.
 
-**Effort:** 1-2 weeks (design + implementation)
-**Priority:** MEDIUM — research value, not urgent for daily use
+**Effort:** 1 week
+**Priority:** MEDIUM — useful at 1000+ notes
 
 ---
 
@@ -119,21 +120,10 @@ Run: `python3 tests/regression_search.py -v` after each deploy.
 
 ---
 
-## 🔬 RESEARCH — Phase 3 & Beyond
+## 🔬 RESEARCH — Future
 
-### Multi-Agent Architecture
-- [ ] Second AI agent with TrueRNG hardware entropy
-- [ ] Autonomous multi-agent experiments
-- [ ] Cross-agent memory sharing protocol
-- [ ] Sleep-time compute integration
-
-### Academic Publication
-- [x] LOCOMO benchmark results — 66.8% Recall@5
-- [ ] End-to-end F1 via Ollama generation layer
-- [ ] Methodology paper: spreading activation for AI memory
-- [ ] Position paper: "Why context length is wrong metric for AI memory"
-- [ ] Comparative analysis: zero-LLM-cost vs LLM-dependent approaches
-- [ ] Identity continuity experiments documentation
+### Multi-Agent Architecture → SEPARATE PROJECT
+See dedicated multi-agent repo (TBD).
 
 ### Temporal Reasoning (Research Insight from Feb 18)
 Temporal queries (36.5% on LOCOMO) require **LLM reasoning**, not better retrieval.
