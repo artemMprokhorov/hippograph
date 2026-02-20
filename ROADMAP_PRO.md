@@ -1,221 +1,114 @@
-# HippoGraph - Pro Roadmap
+# HippoGraph Pro — Roadmap
 
-**Target:** Multi-user deployment, 10K-100K+ notes, production workloads
-**Philosophy:** Performance at scale. Proven techniques from competitors. **LLM-optional architecture.**
-Core system = zero LLM cost (runs on 8GB RAM VPS). LLM layer = pro add-on for
-organizations with GPU servers. Scales DOWN to minimal hardware better than any competitor.
-**Last Updated:** February 18, 2026
-
-> ⚠️ This roadmap is aspirational. Current focus is personal/research use.
-> Pro features are documented for completeness based on competitive analysis.
+**Repository:** github.com/artemMprokhorov/hippograph-pro
+**Base:** Built on top of HippoGraph Personal (same container, same memory)
+**Philosophy:** Add capabilities, don't rewrite foundation. LLM as upgrade, not dependency.
+**Last Updated:** February 20, 2026
 
 ---
 
-## Tier 1: Multi-User Foundation
+## Phase 1 — Quick Wins (1-2 days)
 
-### 1. Multi-Tenant Isolation
-**Source:** Mem0, Zep, Letta all support multi-user
-**Tasks:**
-- [ ] User ID column in nodes/edges/entities tables
-- [ ] API key → user mapping
-- [ ] Per-user ANN indices
-- [ ] Per-user graph cache partitions
-- [ ] Per-user PageRank/community computation
-
-**Effort:** 1-2 weeks
-
----
-
-### 2. LLM-Based Entity Extraction (Ollama)
-**Source:** Mem0/Zep use LLM for entity extraction — higher quality than spaCy
-**Approach:** Optional Ollama sidecar for enhanced extraction:
-- [ ] Ollama container alongside hippograph
-- [ ] Fallback chain: Ollama → spaCy (zero-cost default)
-- [ ] Configurable per-user: LLM extraction on/off
-- [ ] Relationship extraction (not just entities)
-
-**Trade-off:** +3-7GB Docker image, +4-12GB RAM, 2-5s/note vs 100ms spaCy
-**Effort:** 1 week
-
----
-
-### 3. Cloud Sync
-**Source:** doobidoo uses Cloudflare for cross-device sync
-**Tasks:**
-- [ ] Cloudflare Workers KV or D1 backend option
-- [ ] Bidirectional sync protocol
-- [ ] Conflict resolution (last-write-wins or merge)
-- [ ] Encryption at rest for cloud storage
-
-**Effort:** 2 weeks
-
----
-
-## Tier 2: Search & Retrieval at Scale
-
-### 4. ~~Bi-Temporal Model~~ ✅ IMPLEMENTED (Personal, Feb 18, 2026)
-**Source:** Zep/Graphiti tracks "when fact was true" vs "when ingested"
-**Status:** Implemented in personal roadmap. t_event_start/end columns, temporal extractor,
-δ signal in blend scoring, query temporal decomposition. Ready for pro extension:
-- [ ] Add t_valid, t_invalid columns to edges (fact validity tracking)
-- [ ] Temporal queries: "what was true on date X?"
-- [ ] Fact invalidation without deletion
-- [ ] Historical graph reconstruction
-
-**Remaining effort:** 1 week (edge-level temporal, fact invalidation)
-
----
-
-### 5. ~~Advanced Reranking Pipeline~~ ✅ PARTIALLY IMPLEMENTED (Personal, Feb 12, 2026)
-**Source:** Zep uses BGE-m3 for reranking after retrieval
-**Status:** Cross-encoder reranking deployed (ms-marco-MiniLM-L-6-v2). Remaining for pro:
-- [ ] Multi-factor scoring: graph distance + recency + importance + entity overlap
-- [ ] Learning-to-rank from user feedback
-- [ ] Result diversity (avoid clustering)
-
-**Remaining effort:** 1 week
-
----
-
-### 6. Multi-Framework Integration
-**Source:** Mem0/Zep/Letta integrate with LangChain, CrewAI, AutoGen
-**Tasks:**
-- [ ] LangChain memory adapter
-- [ ] CrewAI knowledge source plugin
-- [ ] OpenAI-compatible REST API
-- [ ] SDK: Python + TypeScript
-
-**Effort:** 2-3 weeks
-
----
-
-## Tier 2.5: LLM Enhancement Layer (Optional)
-
-> Pro customers with GPU infrastructure can enable LLM features.
-> Core system ALWAYS works without LLM — this tier is purely additive.
-
-### Reciprocal Rank Fusion (RRF)
-**Source:** Hindsight/TEMPR (Dec 2025) — 89.61% on LoCoMo
+### 1. Reciprocal Rank Fusion (RRF)
 **Problem:** Current weighted blend (α×sem + β×spread + γ×BM25 + δ×temporal) requires manual
 tuning and suffers from score scale mismatch between signals.
 **Solution:** RRF merges ranked lists by rank position, not score magnitude:
 ```
 RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
 ```
+**Source:** Hindsight/TEMPR (Dec 2025) — 89.61% on LoCoMo
 - [ ] Implement RRF fusion as alternative to weighted blend
 - [ ] A/B test: RRF vs current blend on regression suite
-- [ ] Make configurable: FUSION_METHOD=blend|rrf
+- [ ] Config: `FUSION_METHOD=blend|rrf`
 
-**Effort:** 3-4 hours (no LLM needed — pure algorithmic improvement)
-**Priority:** HIGH — benefits all users, zero cost
+**Effort:** 3-4 hours
 
-### LLM-Powered Temporal Reasoning
-**Source:** TReMu (ACL 2025) — 29.83% → 77.67% on temporal queries
-**Problem:** Temporal retrieval at 36.5% is fundamental ceiling for retrieval-only systems.
-**Solution:** Neuro-symbolic approach: LLM generates Python code for date calculations
-- [ ] Ollama sidecar container (optional docker-compose profile)
-- [ ] Temporal query detection → LLM code generation → execute → filter results
-- [ ] Timeline summarization at ingestion (infer dates from context)
-- [ ] Graceful degradation: Ollama unavailable → raw retrieval fallback
+### 2. Graph Viewer Enhancements
+Deferred from Personal roadmap — visual improvements for research.
+- [ ] Community highlighting (color clusters from NetworkX detection)
+- [ ] PageRank-based node sizing (important nodes = bigger)
+- [ ] Community labels overlay
+
+**Effort:** 4-6 hours
+
+---
+
+## Phase 2 — Ollama Integration (3-5 days)
+
+### 3. Ollama Sidecar
+- [ ] Ollama container in docker-compose (optional profile)
+- [ ] Health check and availability detection
 - [ ] Config: `OLLAMA_ENABLED=false` (default OFF)
+- [ ] Graceful degradation: Ollama down → spaCy continues working
 
-**Requirements:** GPU server or M-series Mac for reasonable inference speed
-**Effort:** 1-2 weeks
-**Priority:** MEDIUM for pro (HIGH for benchmark comparison)
+### 4. LLM Entity Extraction
+**Upgrade chain:** Ollama (primary, better quality) → spaCy (fallback, zero cost)
+- [ ] LLM-based extraction: entities + relationships + disambiguation
+- [ ] Automatic fallback to spaCy when Ollama unavailable
+- [ ] Quality comparison: LLM vs spaCy on existing notes
+- [ ] Config: `ENTITY_EXTRACTOR=ollama|spacy` (default: spacy)
 
-### LLM-Powered End-to-End QA
+**Trade-off:** +3-7GB Docker image, +4-12GB RAM, 2-5s/note vs 100ms spaCy
+
+### 5. LLM Sleep-Time Compute
+**Current state:** Zero-LLM graph maintenance (consolidation, PageRank, decay, orphans).
+**Upgrade:** Deep memory processing during idle — like brain during actual sleep.
+- [ ] Re-extract entities from old notes using LLM (upgrade spaCy extractions)
+- [ ] Discover missed connections between notes
+- [ ] Generate cluster summaries for community groups
+- [ ] Identify contradictions or outdated information
+- [ ] Config: `SLEEP_LLM_ENABLED=false` (default OFF, requires Ollama)
+
+---
+
+## Phase 3 — Research (ongoing)
+
+### 6. LLM Temporal Reasoning
+**Problem:** Temporal queries at 36.5% on LOCOMO — fundamental ceiling for retrieval-only.
+**Source:** TReMu (ACL 2025) — 29.83% → 77.67% via neuro-symbolic code generation.
+- [ ] Temporal query detection → LLM code generation → execute → filter
+- [ ] Timeline summarization at ingestion
+- [ ] Graceful degradation without Ollama
+
+### 7. End-to-End QA Benchmark
 **Problem:** Our metrics are retrieval-only (Recall@5). Competitors report answer accuracy.
-**Solution:** Retrieved context → LLM answer generation → F1/accuracy scoring
-- [ ] Answer generation pipeline with configurable LLM backend
-- [ ] LLM-as-judge evaluation mode
-- [ ] Compare end-to-end with Mem0 (J=66.9%), Letta (74.0%), Hindsight (89.61%)
+- [ ] Retrieved context → Ollama answer generation → F1 scoring
+- [ ] Compare with Mem0 (J=66.9%), Letta (74.0%), Hindsight (89.61%)
 
-**Effort:** 1 week (after Ollama sidecar is deployed)
-
----
-
-## Tier 3: Operations & Security
-
-### 7. Authentication & Authorization
-- [ ] OAuth 2.0 / SSO (OIDC)
-- [ ] Role-based access control (RBAC)
-- [ ] API key management (rotation, scoping)
-- [ ] Audit logging (all changes with user/timestamp)
-
-### 8. Observability
-- [ ] Prometheus metrics (latency, throughput, cache hit rates)
-- [ ] Structured logging (ELK stack)
-- [ ] Distributed tracing
-- [ ] Health checks beyond simple ping
-- [ ] Alert on retrieval quality degradation
-
-### 9. Performance at Scale
-- [ ] Production WSGI server (Gunicorn/Uvicorn)
-- [ ] PostgreSQL migration (from SQLite)
-- [ ] Read replicas for search-heavy workloads
-- [ ] Connection pooling
-- [ ] Horizontal scaling with load balancer
-
-### 10. Compliance
-- [ ] SOC 2 readiness
-- [ ] GDPR data handling (right to deletion, export)
-- [ ] Encryption at rest + in transit
-- [ ] Data residency options
-
----
-
-## Tier 4: Advanced Features
-
-### Entity Resolution
-- [ ] Entity disambiguation ("Apple" company vs fruit)
-- [ ] Coreference resolution (pronouns → entities)
+### 8. Entity Resolution
+- [ ] Entity disambiguation ("Apple" company vs fruit via context)
 - [ ] Synonym/acronym merging (ML → Machine Learning)
-- [ ] Knowledge base linking (Wikipedia, DBpedia)
+- [ ] Coreference resolution (pronouns → entities)
 
-### Memory Lifecycle
-- [ ] Short-term memory (session-based, 24h TTL)
-- [ ] Long-term memory with reinforcement learning
-- [ ] Working memory cache (Redis/Valkey)
-- [ ] Automated consolidation (merge similar notes)
-- [ ] Access-based promotion (short-term → long-term)
-
-### Bulk Operations
-- [ ] Bulk delete by weight threshold / age / category
-- [ ] Graph-wide rollback (point-in-time snapshots)
-- [ ] Bulk import from Mem0 / doobidoo format
-- [ ] Export to standard formats (JSON-LD, RDF)
+### 9. Multi-Agent Architecture Groundwork
+- [ ] Second AI agent with separate memory space
+- [ ] Hardware entropy source integration (TrueRNG)
+- [ ] Inter-agent memory sharing protocol
+- [ ] Consciousness experiment framework
 
 ---
 
-## Estimated Effort by Tier
+## Out of Scope (not needed for our situation)
 
-| Tier | Scope | Estimate |
-|------|-------|----------|
-| Tier 1 | Multi-user foundation | 4-5 weeks |
-| Tier 2 | Search at scale | 3-4 weeks |
-| Tier 2.5 | LLM enhancement (optional) | 2-3 weeks |
-| Tier 3 | Operations & security | 4-6 weeks |
-| Tier 4 | Advanced features | 4-6 weeks |
-| **Total** | **Full pro** | **~5 months** |
+| Feature | Reason |
+|---------|--------|
+| Multi-tenant | Single user research system |
+| OAuth/SSO/RBAC | API key sufficient |
+| Cloud sync | Local server |
+| PostgreSQL | SQLite sufficient for our scale |
+| Framework integrations | MCP-only |
+| SOC2/GDPR compliance | Personal project |
+| Horizontal scaling | One user |
 
 ---
 
-## Competitive Gaps to Close for Pro
+## Competitive Position After Pro
 
-| Feature | Status | Competitor Reference |
-|---------|--------|---------------------|
-| Multi-tenant | ❌ Missing | Mem0, Zep, Letta |
-| BM25 hybrid | ✅ Done (Personal) | Zep |
-| Cross-encoder reranking | ✅ Done (Personal) | Zep |
-| Bi-temporal model | ✅ Partial (node-level done, edge-level TODO) | Zep |
-| Standard benchmarks | ✅ Done — 66.8% LOCOMO Recall@5 | All |
-| RRF fusion | ❌ Planned — replace weighted blend | Hindsight/TEMPR |
-| Cloud deployment | ❌ Missing | Mem0 Cloud, Zep Cloud |
-| LLM entity extraction | ❌ Optional | Mem0, Zep |
-| LLM temporal reasoning | ❌ Planned (Tier 2.5) | TReMu, Hindsight |
-| Framework integrations | ❌ MCP only | All competitors |
-| End-to-end QA | ❌ Planned (Tier 2.5) | Mem0, Letta, Hindsight |
-
-**Our pro differentiator:** Zero-LLM-cost base + optional LLM enhancement.
-Core runs on 8GB RAM / $5 VPS. Nobody else scales down this far.
-Competitors REQUIRE LLM for basic operation. We don't.
+| Feature | HippoGraph Pro | Mem0 | Zep | Letta |
+|---------|---------------|------|-----|-------|
+| LLM Cost | **$0 base** + optional Ollama | Required | Required | Required |
+| Entity Extraction | LLM primary + spaCy fallback | LLM only | LLM only | LLM only |
+| Sleep Compute | Zero-LLM + LLM-enhanced | ❌ | ❌ | Sleep-time (LLM required) |
+| Temporal | Retrieval + LLM reasoning | Basic | Bi-temporal | Agent-driven |
+| RRF Fusion | ✅ | ❌ | Hybrid reranking | ❌ |
+| Self-hosted no GPU | ✅ Full functionality | Partial | Partial | ❌ |
