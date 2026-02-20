@@ -24,11 +24,13 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - 🔀 **Blend Scoring** — Three-signal retrieval: semantic similarity + graph activation + BM25 keyword matching (tunable α/β/γ weights)
 - 🌍 **Multilingual Support** — English + Russian entity extraction with automatic language detection
 
-**Graph Visualization:**
+**Graph Visualization & Web UI:**
+- 🔐 **Login Screen** — Branded login with auto-reconnect (7-day credential storage)
 - 🌐 **Interactive Graph Viewer** — D3.js force-directed layout at `http://localhost:5002`
 - 🎨 **Category Color Coding** — Visual distinction by note type
 - ⏱️ **Timeline Animation** — Watch your knowledge graph grow over time
 - 🔍 **Click-to-Detail** — Load full note content on demand
+- 📡 **Live Notifications** — Real-time toast alerts when notes are added/deleted via MCP
 
 **Technical Features:**
 - 384-dimensional semantic embeddings (paraphrase-multilingual-MiniLM-L12-v2)
@@ -47,7 +49,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Sleep-time compute** — Zero-LLM graph maintenance: consolidation, PageRank, orphan detection, stale decay, duplicate scan (MCP tool)
 - **Bi-temporal model** — Event time extraction for temporal query answering
 - **LOCOMO benchmark** — 66.8% Recall@5 at zero LLM cost
-- Docker-ready deployment
+- Docker-ready deployment (multi-architecture: amd64 + arm64)
 
 ---
 
@@ -88,16 +90,22 @@ The server will:
 - Download embedding models (~2GB on first run)
 - Download spaCy models for entity extraction (en + multilingual)
 - Initialize SQLite database
-- Start on `http://localhost:5000`
+- Start API on `http://localhost:5001`
+- Start Graph Viewer on `http://localhost:5002`
 
 ### 3. Verify Installation
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5001/health
 # Expected: {"status": "ok", "version": "2.0.0"}
 ```
 
-### 4. Setup Remote Access (Optional)
+### 4. Open Graph Viewer
+
+Open `http://localhost:5002` in your browser. Enter your API endpoint URL
+(`http://localhost:5001/sse2`) and the API key you set in `.env`.
+
+### 5. Setup Remote Access (Optional)
 
 For Claude.ai integration or remote use, you need a public HTTPS URL.  
 See [Setup Guide](docs/SETUP_GUIDE.md) for options:
@@ -105,7 +113,7 @@ See [Setup Guide](docs/SETUP_GUIDE.md) for options:
 - **Cloudflare Tunnel** - Persistent URL (recommended)
 - **Custom reverse proxy** - Nginx, Caddy, etc.
 
-### 5. Connect to Claude.ai
+### 6. Connect to Claude.ai
 
 Once you have a public URL:
 1. Go to **Claude.ai → Settings → Integrations**

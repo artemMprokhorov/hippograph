@@ -2,17 +2,26 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies, nginx, and ngrok
+# Install system dependencies and nginx
+# ngrok is optional — install only if NGROK_AUTHTOKEN is set at runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     wget \
     unzip \
     nginx \
-    && wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm64.tgz \
-    && tar xvzf ngrok-v3-stable-linux-arm64.tgz -C /usr/local/bin \
-    && rm ngrok-v3-stable-linux-arm64.tgz \
     && rm -rf /var/lib/apt/lists/*
+
+# Install ngrok (multi-architecture)
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then \
+        NGROK_ARCH="arm64"; \
+    else \
+        NGROK_ARCH="amd64"; \
+    fi && \
+    wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-${NGROK_ARCH}.tgz && \
+    tar xzf ngrok-v3-stable-linux-${NGROK_ARCH}.tgz -C /usr/local/bin && \
+    rm ngrok-v3-stable-linux-${NGROK_ARCH}.tgz
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

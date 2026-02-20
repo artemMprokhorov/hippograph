@@ -10,9 +10,8 @@ transformers>=4.30.0,<5.0.0
 sentence-transformers>=2.2.0
 
 # Entity extraction with spaCy (multilingual)
+# Models are downloaded in Dockerfile via: python -m spacy download
 spacy>=3.7.0,<4.0.0
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
-https://github.com/explosion/spacy-models/releases/download/xx_ent_wiki_sm-3.7.0/xx_ent_wiki_sm-3.7.0-py3-none-any.whl
 
 # ANN indexing for fast similarity search with incremental updates
 hnswlib>=0.8.0
