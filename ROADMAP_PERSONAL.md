@@ -3,7 +3,7 @@
 **Target:** Single user, 500-2,000 notes, personal knowledge management + research
 **Philosophy:** Keep all memories. Natural patterns over forced deletion. **Zero LLM cost as default.**
 Runs on any hardware (laptop, mini-PC, 8GB RAM). LLM layer optional for users with GPU.
-**Last Updated:** February 18, 2026
+**Last Updated:** February 20, 2026 — **COMPLETED** ✅
 
 ---
 
@@ -76,7 +76,7 @@ Query temporal decomposition strips signal words for cleaner semantic search.
 
 ### 5. ~~LLM Generation Layer~~ → MOVED TO ENTERPRISE
 Ollama requires GPU/M-series hardware — not available to typical personal users.
-See ROADMAP_ENTERPRISE.md Tier 2.5.
+See ROADMAP_PRO.md Tier 2.5.
 
 ---
 
@@ -84,7 +84,7 @@ See ROADMAP_ENTERPRISE.md Tier 2.5.
 
 ### 8. ~~Reciprocal Rank Fusion (RRF)~~ → MOVED TO ENTERPRISE
 Current blend works well at personal scale (66.8% LOCOMO, 32/32 regression).
-RRF optimization relevant for enterprise scale. See ROADMAP_ENTERPRISE.md Tier 2.5.
+RRF optimization relevant for enterprise scale. See ROADMAP_PRO.md Tier 2.5.
 
 ### 4. ~~Sleep-Time Compute~~ ✅ COMPLETED (Feb 18, 2026)
 **Result:** Zero-LLM graph maintenance daemon with 5-step cycle:
@@ -129,17 +129,24 @@ that needs reading timestamps and reasoning, not similarity matching.
 TReMu (Feb 2025) achieves 77.67% temporal via neuro-symbolic code generation.
 Our path: Ollama + retrieved context + temporal chain-of-thought.
 
-### Real-Time Graph Visualization
-- [ ] Live graph updates via WebSocket
-- [ ] Community highlighting in viewer
-- [ ] PageRank-based node sizing
-- [ ] Temporal playback improvements
+### ~~Real-Time Graph Visualization~~ ✅ COMPLETED (Feb 19-20, 2026)
+**Result:** Full live notification system with login screen redesign.
+- [x] Live graph updates via HTTP polling (MCP → pending_events queue → /api/poll-events → nginx → client fetch)
+- [x] Toast notifications (green banner, page title update)
+- [x] Login screen with HippoGraph branding (logo, connect flow, auto-login)
+- [x] Disconnect/logout functionality
+- [ ] Community highlighting in viewer (deferred to Pro)
+- [ ] PageRank-based node sizing (deferred to Pro)
+- [ ] Temporal playback improvements (deferred to Pro)
+
+Key learnings: Flask-SocketIO cross-thread emit fails silently, WebSocket upgrade crashes Werkzeug,
+polling transport loses server events. Simple HTTP polling through nginx proxy is the reliable solution.
 
 ---
 
-## ❌ OUT OF SCOPE (Personal)
+## ❌ DEFERRED TO PRO
 
-Moved to ROADMAP_ENTERPRISE.md:
+Moved to ROADMAP_PRO.md:
 - Multi-tenant isolation
 - Cloud managed service
 - SSO/OAuth

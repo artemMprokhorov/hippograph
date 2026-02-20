@@ -6,6 +6,7 @@ Flask application with MCP SSE endpoint
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from websocket_events import init_socketio, register_http_poll
 import os
 import sys
 
@@ -24,6 +25,11 @@ def create_app():
     """Create and configure Flask application"""
     app = Flask(__name__)
     CORS(app)
+    
+    # Initialize WebSocket
+    socketio = init_socketio(app)
+    app.socketio = socketio
+    register_http_poll(app)
     
     # Initialize database
     init_database()
@@ -199,7 +205,10 @@ def main():
     print(f"   Health check: /health")
     print("=" * 60)
     
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    if hasattr(app, "socketio") and app.socketio:
+        app.socketio.run(app, host="0.0.0.0", port=port, debug=debug, allow_unsafe_werkzeug=True)
+    else:
+        app.run(host="0.0.0.0", port=port, debug=debug)
 
 
 if __name__ == "__main__":

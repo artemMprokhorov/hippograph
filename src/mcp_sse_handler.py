@@ -11,7 +11,9 @@ import hmac
 import os
 
 from database import get_stats, get_node, delete_node as db_delete_node, update_node as db_update_node, get_note_history, restore_note_version
-from graph_engine import add_note_with_links, search_with_activation, get_node_graph, search_with_activation_protected, find_similar_notes
+from graph_engine import add_note_with_links
+from websocket_events import broadcast_note_added, broadcast_note_updated, broadcast_note_deleted, broadcast_search
+from graph_engine import search_with_activation, get_node_graph, search_with_activation_protected, find_similar_notes
 from stable_embeddings import get_model
 
 # Authentication - use environment variable
@@ -352,6 +354,9 @@ def tool_add_note(content: str, category: str, importance: str = "normal", force
     text += f"Entity links created: {result['entity_links']}\n"
     text += f"Semantic links created: {result['semantic_links']}"
     
+    # Broadcast to graph viewer
+    broadcast_note_added(result['node_id'], category, importance, content[:200], result['entities'], result['entity_links'])
+    
     # Add warning about similar notes
     if "warning" in result:
         text += f"\n\n⚠️ {result['warning']}:"
@@ -374,6 +379,7 @@ def tool_update_note(note_id: int, content: str, category: str = None):
     embedding = model.encode(content)[0]
     db_update_node(note_id, content, category, embedding.tobytes())
     
+    broadcast_note_updated(note_id, category or existing["category"], content[:200])
     return {"content": [{"type": "text", "text": f"✅ Updated note #{note_id}"}]}
 
 
@@ -386,6 +392,7 @@ def tool_delete_note(note_id: int):
     if not deleted:
         return {"error": {"code": -32602, "message": f"Note #{note_id} not found"}}
     
+    broadcast_note_deleted(note_id)
     text = f"✅ Deleted note #{note_id}\nWas: [{deleted['category']}] {deleted['content'][:100]}..."
     return {"content": [{"type": "text", "text": text}]}
 

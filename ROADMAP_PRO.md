@@ -1,13 +1,13 @@
-# HippoGraph - Enterprise Roadmap
+# HippoGraph - Pro Roadmap
 
 **Target:** Multi-user deployment, 10K-100K+ notes, production workloads
 **Philosophy:** Performance at scale. Proven techniques from competitors. **LLM-optional architecture.**
-Core system = zero LLM cost (runs on 8GB RAM VPS). LLM layer = enterprise add-on for
+Core system = zero LLM cost (runs on 8GB RAM VPS). LLM layer = pro add-on for
 organizations with GPU servers. Scales DOWN to minimal hardware better than any competitor.
 **Last Updated:** February 18, 2026
 
 > ⚠️ This roadmap is aspirational. Current focus is personal/research use.
-> Enterprise features are documented for completeness based on competitive analysis.
+> Pro features are documented for completeness based on competitive analysis.
 
 ---
 
@@ -56,7 +56,7 @@ organizations with GPU servers. Scales DOWN to minimal hardware better than any 
 ### 4. ~~Bi-Temporal Model~~ ✅ IMPLEMENTED (Personal, Feb 18, 2026)
 **Source:** Zep/Graphiti tracks "when fact was true" vs "when ingested"
 **Status:** Implemented in personal roadmap. t_event_start/end columns, temporal extractor,
-δ signal in blend scoring, query temporal decomposition. Ready for enterprise extension:
+δ signal in blend scoring, query temporal decomposition. Ready for pro extension:
 - [ ] Add t_valid, t_invalid columns to edges (fact validity tracking)
 - [ ] Temporal queries: "what was true on date X?"
 - [ ] Fact invalidation without deletion
@@ -68,7 +68,7 @@ organizations with GPU servers. Scales DOWN to minimal hardware better than any 
 
 ### 5. ~~Advanced Reranking Pipeline~~ ✅ PARTIALLY IMPLEMENTED (Personal, Feb 12, 2026)
 **Source:** Zep uses BGE-m3 for reranking after retrieval
-**Status:** Cross-encoder reranking deployed (ms-marco-MiniLM-L-6-v2). Remaining for enterprise:
+**Status:** Cross-encoder reranking deployed (ms-marco-MiniLM-L-6-v2). Remaining for pro:
 - [ ] Multi-factor scoring: graph distance + recency + importance + entity overlap
 - [ ] Learning-to-rank from user feedback
 - [ ] Result diversity (avoid clustering)
@@ -91,7 +91,7 @@ organizations with GPU servers. Scales DOWN to minimal hardware better than any 
 
 ## Tier 2.5: LLM Enhancement Layer (Optional)
 
-> Enterprise customers with GPU infrastructure can enable LLM features.
+> Pro customers with GPU infrastructure can enable LLM features.
 > Core system ALWAYS works without LLM — this tier is purely additive.
 
 ### Reciprocal Rank Fusion (RRF)
@@ -121,7 +121,7 @@ RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
 
 **Requirements:** GPU server or M-series Mac for reasonable inference speed
 **Effort:** 1-2 weeks
-**Priority:** MEDIUM for enterprise (HIGH for benchmark comparison)
+**Priority:** MEDIUM for pro (HIGH for benchmark comparison)
 
 ### LLM-Powered End-to-End QA
 **Problem:** Our metrics are retrieval-only (Recall@5). Competitors report answer accuracy.
@@ -196,11 +196,11 @@ RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
 | Tier 2.5 | LLM enhancement (optional) | 2-3 weeks |
 | Tier 3 | Operations & security | 4-6 weeks |
 | Tier 4 | Advanced features | 4-6 weeks |
-| **Total** | **Full enterprise** | **~5 months** |
+| **Total** | **Full pro** | **~5 months** |
 
 ---
 
-## Competitive Gaps to Close for Enterprise
+## Competitive Gaps to Close for Pro
 
 | Feature | Status | Competitor Reference |
 |---------|--------|---------------------|
@@ -216,6 +216,6 @@ RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
 | Framework integrations | ❌ MCP only | All competitors |
 | End-to-end QA | ❌ Planned (Tier 2.5) | Mem0, Letta, Hindsight |
 
-**Our enterprise differentiator:** Zero-LLM-cost base + optional LLM enhancement.
+**Our pro differentiator:** Zero-LLM-cost base + optional LLM enhancement.
 Core runs on 8GB RAM / $5 VPS. Nobody else scales down this far.
 Competitors REQUIRE LLM for basic operation. We don't.
