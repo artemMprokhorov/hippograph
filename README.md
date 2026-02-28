@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" width="200" alt="Neural Memory Graph Logo">
+  <img src="logo.svg" width="200" alt="HippoGraph Logo">
 </p>
 
 # HippoGraph
