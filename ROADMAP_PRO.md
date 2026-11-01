@@ -16,7 +16,7 @@ tuning and suffers from score scale mismatch between signals.
 ```
 RRF_score(d) = Σ 1/(k + rank_r(d)) for each retriever r
 ```
-**Source:** Hindsight/TEMPR (Dec 2025) — 89.61% on LoCoMo
+**Source:** Hindsight/TEMPR (Dec 2025)
 - [ ] Implement RRF fusion as alternative to weighted blend
 - [ ] A/B test: RRF vs current blend on regression suite
 - [ ] Config: `FUSION_METHOD=blend|rrf`
@@ -64,8 +64,8 @@ Deferred from Personal roadmap — visual improvements for research.
 ## Phase 3 — Research (ongoing)
 
 ### 6. LLM Temporal Reasoning
-**Problem:** Temporal queries at 36.5% on LOCOMO — fundamental ceiling for retrieval-only.
-**Source:** TReMu (ACL 2025) — 29.83% → 77.67% via neuro-symbolic code generation.
+**Problem:** Temporal queries are the hardest LOCOMO category — fundamental ceiling for retrieval-only.
+**Source:** TReMu (ACL 2025) — neuro-symbolic code generation.
 - [ ] Temporal query detection → LLM code generation → execute → filter
 - [ ] Timeline summarization at ingestion
 - [ ] Graceful degradation without Ollama
@@ -73,7 +73,7 @@ Deferred from Personal roadmap — visual improvements for research.
 ### 7. End-to-End QA Benchmark
 **Problem:** Our metrics are retrieval-only (Recall@5). Competitors report answer accuracy.
 - [ ] Retrieved context → Ollama answer generation → F1 scoring
-- [ ] Compare with Mem0 (J=66.9%), Letta (74.0%), Hindsight (89.61%)
+- [ ] Compare with Mem0, Letta, Hindsight
 
 ### 8. Entity Resolution
 - [ ] Entity disambiguation ("Apple" company vs fruit via context)

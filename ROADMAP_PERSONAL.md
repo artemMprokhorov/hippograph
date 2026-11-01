@@ -22,14 +22,14 @@ Runs on any hardware (laptop, mini-PC, 8GB RAM). LLM layer optional for users wi
 ### Search & Retrieval
 - [x] Blend scoring (α×semantic + β×spreading + γ×BM25 + δ×temporal)
 - [x] BM25 keyword search (Okapi BM25, 8678 unique terms, zero-dependency)
-- [x] Cross-encoder reranking (ms-marco-MiniLM-L-6-v2, +21% precision)
+- [x] Cross-encoder reranking (ms-marco-MiniLM-L-6-v2)
 - [x] Bi-temporal model (t_event extraction, temporal overlap scoring)
 - [x] Query temporal decomposition (signal stripping + chronological ordering)
 - [x] Context window protection (brief/full modes)
 - [x] Category, time range, entity type filters
 - [x] Duplicate detection (similarity threshold)
 - [x] Hub node penalty (entity count-based)
-- [x] LOCOMO benchmark: **66.8% Recall@5** (zero LLM cost)
+- [x] LOCOMO benchmark (zero LLM cost)
 - [x] P@5 = 82%, Top-1 = 100% on internal benchmark
 
 ### Memory Features
@@ -61,10 +61,10 @@ Runs on any hardware (laptop, mini-PC, 8GB RAM). LLM layer optional for users wi
 **Result:** Zero-dependency Okapi BM25. 8678 terms. Three-signal blend → four-signal with δ temporal.
 
 ### 2. ~~Reranking Pass~~ ✅ COMPLETED (Feb 12, 2026)
-**Result:** Cross-encoder ms-marco-MiniLM-L-6-v2. +21.3% on LOCOMO. ~100ms latency.
+**Result:** Cross-encoder ms-marco-MiniLM-L-6-v2. ~100ms latency.
 
 ### 3. ~~LOCOMO Benchmark~~ ✅ COMPLETED (Feb 12-18, 2026)
-**Result:** Full adapter deployed. Optimization journey: 32.6% → 44.2% → 65.5% → **66.8% Recall@5**.
+**Result:** Full adapter deployed. Optimization journey: session-level → turn-level → hybrid + reranking → **best configuration**.
 Hybrid granularity + reranking + bi-temporal + query decomposition. Zero LLM cost.
 See [BENCHMARK.md](./BENCHMARK.md) for full results.
 
@@ -83,7 +83,7 @@ See ROADMAP_PRO.md Tier 2.5.
 ## 🎯 MEDIUM PRIORITY — Quality of Life
 
 ### 8. ~~Reciprocal Rank Fusion (RRF)~~ → MOVED TO ENTERPRISE
-Current blend works well at personal scale (66.8% LOCOMO, 32/32 regression).
+Current blend works well at personal scale (32/32 regression).
 RRF optimization relevant for enterprise scale. See ROADMAP_PRO.md Tier 2.5.
 
 ### 4. ~~Sleep-Time Compute~~ ✅ COMPLETED (Feb 18, 2026)
@@ -123,10 +123,10 @@ Run: `python3 tests/regression_search.py -v` after each deploy.
 See dedicated multi-agent repo (TBD).
 
 ### Temporal Reasoning (Research Insight from Feb 18)
-Temporal queries (36.5% on LOCOMO) require **LLM reasoning**, not better retrieval.
+Temporal queries (the hardest LOCOMO category) require **LLM reasoning**, not better retrieval.
 LOCOMO temporal Qs ask "what happened first?", "before or after?" — event ordering
 that needs reading timestamps and reasoning, not similarity matching.
-TReMu (Feb 2025) achieves 77.67% temporal via neuro-symbolic code generation.
+TReMu (Feb 2025) addresses temporal reasoning via neuro-symbolic code generation.
 Our path: Ollama + retrieved context + temporal chain-of-thought.
 
 ### ~~Real-Time Graph Visualization~~ ✅ COMPLETED (Feb 19-20, 2026)
@@ -164,7 +164,6 @@ Moved to ROADMAP_PRO.md:
 |--------|-----------|------|-----|-------|----------|
 | LLM Cost | **$0** | ~$0.01/note | ~$0.02/note | ~$0.05/note | $0 |
 | Retrieval | Spread+Sem+BM25+Temporal | Vector+Graph | BM25+Sem+Graph | Agent-driven | Vector-only |
-| LOCOMO | **66.8% R@5** | 66.9% J-score | N/A | 74.0% acc | N/A |
 | Latency | 200-500ms | P95=1.44s | P95=300ms | varies | 5ms (cached) |
 | Graph | ✅ Spreading | ✅ Mem0ᵍ | ✅ Temporal KG | ❌ | ❌ |
 | Emotional | ✅ | ❌ | ❌ | ❌ | ✅ |

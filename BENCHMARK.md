@@ -1,4 +1,4 @@
-# HippoGraph — LOCOMO Benchmark Results
+# HippoGraph — LOCOMO Benchmark
 
 ## February 2026
 
@@ -6,7 +6,7 @@
 
 HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-research/locomo) — a standardized dataset for testing long-conversation memory systems. LOCOMO contains 10 multi-session conversations (272 sessions, 5,882 dialogue turns) with 1,986 QA pairs across multiple reasoning categories.
 
-**Key result:** HippoGraph achieves **66.8% Recall@5** on retrieval with **zero LLM infrastructure cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, BM25 keyword search, cross-encoder reranking, bi-temporal model, and query temporal decomposition.
+**Key result:** HippoGraph retrieval runs with **zero LLM infrastructure cost** — all processing runs locally using spaCy NER, sentence-transformers embeddings, BM25 keyword search, cross-encoder reranking, bi-temporal model, and query temporal decomposition.
 
 ---
 
@@ -30,72 +30,34 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 
 ---
 
-### Results: Hybrid + Reranking + Bi-temporal + Query Decomposition (Best)
+### Evaluated Query Categories
 
-| Category | Queries | Hits | Recall@5 | MRR |
-|----------|---------|------|----------|-----|
-| **Overall** | **1,540** | **1,028** | **66.8%** | **0.549** |
-| Single-hop | 282 | 177 | 62.8% | 0.470 |
-| Multi-hop | 321 | 216 | **67.3%** | 0.555 |
-| Temporal | 96 | 35 | 36.5% | 0.269 |
-| Open-domain | 841 | 600 | **71.3%** | 0.606 |
-
-### Results: Hybrid + Reranking (Previous Best)
-
-| Category | Queries | Hits | Recall@5 | MRR |
-|----------|---------|------|----------|-----|
-| **Overall** | **1,540** | **1,008** | **65.5%** | **0.535** |
-| Single-hop | 282 | 175 | 62.1% | 0.458 |
-| Multi-hop | 321 | 206 | 64.2% | 0.537 |
-| Temporal | 96 | 34 | 35.4% | 0.266 |
-| Open-domain | 841 | 593 | **70.5%** | 0.590 |
-
-### Results: Turn-Level Granularity (5,870 notes, no reranking)
-
-| Category | Queries | Hits | Recall@5 | MRR |
-|----------|---------|------|----------|-----|
-| **Overall** | **1,540** | **681** | **44.2%** | **0.304** |
-| Single-hop | 282 | 107 | 37.9% | 0.227 |
-| Multi-hop | 321 | 169 | 52.6% | 0.394 |
-| Temporal | 96 | 22 | 22.9% | 0.139 |
-| Open-domain | 841 | 383 | 45.5% | 0.314 |
-
-### Results: Session-Level Granularity (272 notes, no reranking)
-
-| Category | Queries | Hits | Recall@5 | MRR |
-|----------|---------|------|----------|-----|
-| **Overall** | **1,540** | **502** | **32.6%** | **0.223** |
-| Single-hop | 282 | 142 | 50.4% | 0.315 |
-| Multi-hop | 321 | 88 | 27.4% | 0.207 |
-| Temporal | 96 | 34 | 35.4% | 0.236 |
-| Open-domain | 841 | 238 | 28.3% | 0.196 |
+| Category | Queries |
+|----------|---------|
+| **Overall** | **1,540** |
+| Single-hop | 282 |
+| Multi-hop | 321 |
+| Temporal | 96 |
+| Open-domain | 841 |
 
 ---
 
 ### Optimization Journey
 
-| Configuration | Recall@5 | MRR | Notes |
-|--------------|----------|-----|-------|
-| Session-level (baseline) | 32.6% | 0.223 | 272 notes, broad context |
-| Turn-level | 44.2% | 0.304 | 5,870 notes, +11.6% |
-| Hybrid + Reranking | 65.5% | 0.535 | ~1,960 notes, +21.3% over turn |
-| + Bi-temporal δ signal | 66.0% | 0.546 | Temporal overlap scoring |
-| + Embedding enrichment ❌ | 65.6% | 0.545 | Reverted — polluted non-temporal embeddings |
-| **+ Query decomposition** | **66.8%** | **0.549** | **Temporal signal stripping + order scoring** |
-
-| Category | Session → Turn → Hybrid+Rerank → **Best** |
-|----------|-------------------------------------------|
-| Overall | 32.6% → 44.2% → 65.5% → **66.8%** |
-| Multi-hop | 27.4% → 52.6% → 64.2% → **67.3%** |
-| Single-hop | 50.4% → 37.9% → 62.1% → **62.8%** |
-| Open-domain | 28.3% → 45.5% → 70.5% → **71.3%** |
-| Temporal | 35.4% → 22.9% → 35.4% → **36.5%** |
+| Configuration | Notes |
+|--------------|-------|
+| Session-level (baseline) | 272 notes, broad context |
+| Turn-level | 5,870 notes |
+| Hybrid + Reranking | ~1,960 notes |
+| + Bi-temporal δ signal | Temporal overlap scoring |
+| + Embedding enrichment ❌ | Reverted — polluted non-temporal embeddings |
+| **+ Query decomposition** | **Temporal signal stripping + order scoring** |
 
 **Key findings:**
 - Hybrid granularity (3-turn chunks) captures the best of both session and turn-level approaches
-- Cross-encoder reranking adds +21.3% over turn-level baseline
-- Spreading activation validated: multi-hop improved from 27.4% (session) to 67.3% (best)
-- Query temporal decomposition: stripping temporal signal words improves semantic matching (+1.3%)
+- Cross-encoder reranking improves over the turn-level baseline
+- Spreading activation validated: multi-hop improved from session-level to the best configuration
+- Query temporal decomposition: stripping temporal signal words improves semantic matching
 - Embedding enrichment with dates hurts non-temporal queries — reverted
 - Temporal queries remain the hardest category — requires LLM reasoning layer, not retrieval improvements
 
@@ -107,13 +69,13 @@ HippoGraph was evaluated on the [LOCOMO benchmark](https://github.com/snap-resea
 
 Our Recall@5 measures whether the correct evidence document appears in the top-5 retrieved results. Other systems report different metrics:
 
-| System | Metric | Score | What It Measures |
-|--------|--------|-------|-----------------|
-| **HippoGraph** | **Recall@5** | **66.8%** | Retrieved correct document in top-5 |
-| Mem0 | LOCOMO J-score | 66.9% | LLM-judged answer accuracy |
-| Letta (MemGPT) | LoCoMo accuracy | 74.0% | LLM-generated answer accuracy |
-| GPT-4 (no memory) | F1 | 32.1% | Answer text overlap with ground truth |
-| Human ceiling | F1 | 87.9% | Human-generated answers |
+| System | Metric | What It Measures |
+|--------|--------|-----------------|
+| **HippoGraph** | **Recall@5** | Retrieved correct document in top-5 |
+| Mem0 | LOCOMO J-score | LLM-judged answer accuracy |
+| Letta (MemGPT) | LoCoMo accuracy | LLM-generated answer accuracy |
+| GPT-4 (no memory) | F1 | Answer text overlap with ground truth |
+| Human ceiling | F1 | Human-generated answers |
 
 **Direct numerical comparison across these metrics is not valid.** An end-to-end evaluation (retrieval + LLM answer generation) would be needed for apples-to-apples comparison.
 
@@ -145,10 +107,10 @@ Query → Temporal Decomposition (strip signal words, detect direction)
 
 ### Next Steps
 
-- [x] ~~Hybrid granularity (3-turn chunks)~~ — **+21.3% improvement**
+- [x] ~~Hybrid granularity (3-turn chunks)~~
 - [x] ~~Cross-encoder reranking~~ — **included in best result**
 - [x] ~~Bi-temporal model~~ — **t_event extraction, δ signal in blend**
-- [x] ~~Query temporal decomposition~~ — **+1.3% via signal stripping**
+- [x] ~~Query temporal decomposition~~ — **via signal stripping**
 - [ ] Add LLM generation layer (Ollama) for end-to-end F1 comparison with Mem0/Letta
 - [ ] Tune blend weights (α, β, γ, δ) per category
 - [ ] Evaluate on LongMemEval and DMR benchmarks

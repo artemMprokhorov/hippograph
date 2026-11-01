@@ -48,7 +48,7 @@ A self-hosted MCP (Model Context Protocol) server that adds persistent, graph-ba
 - **Graph visualization** — D3.js interactive viewer with REST API
 - **Sleep-time compute** — Zero-LLM graph maintenance: consolidation, PageRank, orphan detection, stale decay, duplicate scan (MCP tool)
 - **Bi-temporal model** — Event time extraction for temporal query answering
-- **LOCOMO benchmark** — 66.8% Recall@5 at zero LLM cost
+- **LOCOMO benchmark** — retrieval evaluated at zero LLM cost
 - Docker-ready deployment (multi-architecture: amd64 + arm64)
 
 ---
